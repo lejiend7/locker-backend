@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartLocker — Backend API</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #080D1A;
+      color: #E8ECF4;
+      min-height: 100vh;
+    }
+
+    /* ── NAV ── */
+    nav {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #2563EB, #3B82F6);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-icon svg { width: 15px; height: 15px; stroke: #fff; fill: none; }
+    .logo-name {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #F0F4FF;
+    }
+    .logo-name span {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: #3B82F6;
+      background: rgba(37,99,235,0.12);
+      border: 1px solid rgba(37,99,235,0.25);
+      border-radius: 100px;
+      padding: 2px 8px;
+      margin-left: 8px;
+      vertical-align: middle;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+    .nav-version {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #334155;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 72px 24px 56px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 100px;
+      padding: 5px 14px;
+      margin-bottom: 28px;
+    }
+    .badge-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #22C55E;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .badge-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: #4ADE80;
+      letter-spacing: 0.05em;
+    }
+    .hero h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      color: #F0F4FF;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .hero h1 span { color: #3B82F6; }
+    .hero p {
+      color: #64748B;
+      font-size: 1rem;
+      line-height: 1.7;
+      max-width: 560px;
+      margin-bottom: 36px;
+    }
+    .base-url {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: #0D1425;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 12px 20px;
+    }
+    .base-url-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: #475569;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .base-url-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: #93C5FD;
+    }
+
+    /* ── ENDPOINTS ── */
+    .endpoints {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 56px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #3B82F6;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #F0F4FF;
+      margin-bottom: 32px;
+    }
+    .endpoint-group { margin-bottom: 40px; }
+    .group-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #475569;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .endpoint-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .endpoint-row:last-child { border-bottom: none; }
+    .method {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 5px;
+      min-width: 48px;
+      text-align: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .get  { background: rgba(37,99,235,0.15); color: #60A5FA; border: 1px solid rgba(37,99,235,0.25); }
+    .post { background: rgba(34,197,94,0.1);  color: #4ADE80; border: 1px solid rgba(34,197,94,0.2); }
+    .endpoint-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #CBD5E1;
+      min-width: 280px;
+      flex-shrink: 0;
+    }
+    .endpoint-path em {
+      font-style: normal;
+      color: #F59E0B;
+    }
+    .endpoint-desc {
+      font-size: 0.85rem;
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    /* ── MODELS ── */
+    .models {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 56px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .models-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .model-card {
+      background: #0D1425;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .model-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .model-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+    .model-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: #93C5FD;
+    }
+    .model-body {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .model-field {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+    }
+    .field-name { color: #CBD5E1; min-width: 120px; }
+    .field-type { color: #F59E0B; }
+    .field-note { color: #334155; font-size: 0.7rem; }
+
+    /* ── STATUS CODES ── */
+    .statuses {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 56px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .status-chip {
+      background: #0D1425;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .s200 { color: #4ADE80; }
+    .s201 { color: #34D399; }
+    .s400 { color: #F59E0B; }
+    .s401 { color: #FB923C; }
+    .s404 { color: #F87171; }
+    .s409 { color: #C084FC; }
+    .status-msg { font-size: 0.8rem; color: #475569; }
+
+    /* ── FOOTER ── */
+    footer {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .footer-left {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #1E3A5F;
+    }
+    .footer-right { font-size: 0.78rem; color: #1E3A5F; }
+
+    @media (max-width: 700px) {
+      .endpoint-row { flex-direction: column; gap: 6px; }
+      .endpoint-path { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="#" class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <span class="logo-name">SmartLocker <span>API</span></span>
+    </a>
+    <span class="nav-version">v1.0.0 &nbsp;·&nbsp; REST</span>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">
+      <div class="badge-dot"></div>
+      <span class="badge-text">API ONLINE</span>
+    </div>
+    <h1>SmartLocker <span>Backend</span><br>API Reference</h1>
+    <p>A lightweight REST API powering the SmartLocker network — handling stations, packages, delivery agents, and customer pickups.</p>
+    <div class="base-url">
+      <span class="base-url-label">Base URL</span>
+      <span class="base-url-value">dev-api-smart-locker.lejiend7.com/api/v1</span>
+    </div>
+  </div>
+
+ 
+
+  <!-- STATUS CODES -->
+  <div class="statuses">
+    <div class="section-label">Responses</div>
+    <div class="section-title">HTTP Status Codes</div>
+    <div class="status-grid">
+      <div class="status-chip"><span class="status-code s200">200</span><span class="status-msg">OK — request succeeded</span></div>
+      <div class="status-chip"><span class="status-code s201">201</span><span class="status-msg">Created — resource created</span></div>
+      <div class="status-chip"><span class="status-code s400">400</span><span class="status-msg">Bad Request — missing fields</span></div>
+      <div class="status-chip"><span class="status-code s401">401</span><span class="status-msg">Unauthorized — invalid code</span></div>
+      <div class="status-chip"><span class="status-code s404">404</span><span class="status-msg">Not Found — no such resource</span></div>
+      <div class="status-chip"><span class="status-code s409">409</span><span class="status-msg">Conflict — already processed</span></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="footer-left">SmartLocker API &nbsp;·&nbsp; v1.0.0 &nbsp;·&nbsp; REST / JSON</span>
+    <span class="footer-right">&copy; 2026 SmartLocker Systems</span>
+  </footer>
+
+</body>
+</html>
