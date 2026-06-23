@@ -7,7 +7,7 @@ export abstract class BaseRepository<T extends ObjectLiteral> {
     return this.repository.find();
   }
 
-  async findById(id: string): Promise<T | null> {
+  async findById(id: number): Promise<T | null> {
     return this.repository.findOne({ where: { id } as any });
   }
 
@@ -16,12 +16,12 @@ export abstract class BaseRepository<T extends ObjectLiteral> {
     return this.repository.save(entity as any);
   }
 
-  async update(id: string, data: Partial<T>): Promise<T | null> {
+  async update(id: number, data: Partial<T>): Promise<T | null> {
     await this.repository.update(id, data as any);
     return this.findById(id);
   }
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: number): Promise<boolean> {
     const result = await this.repository.delete(id);
     return (result.affected ?? 0) > 0;
   }

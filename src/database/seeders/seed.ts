@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import bcrypt from 'bcryptjs';
 import { AppDataSource } from '../data-source.js';
 import { Station } from '../entities/Station.js';
 import { Locker } from '../entities/Locker.js';
@@ -20,7 +21,6 @@ async function seed() {
 
     console.log('Seeding stations...');
     const station1 = stationRepo.create({
-      id: 'ST-1749200000000',
       name: 'The Curve',
       type: 'mall',
       city: 'Petaling Jaya',
@@ -28,7 +28,6 @@ async function seed() {
     });
 
     const station2 = stationRepo.create({
-      id: 'ST-1749200000001',
       name: 'Damansara Uptown Business Centre',
       type: 'office',
       city: 'Petaling Jaya',
@@ -36,35 +35,31 @@ async function seed() {
     });
 
     const station3 = stationRepo.create({
-      id: 'ST-1749200000002',
       name: 'Empire Damansara Residences',
       type: 'residential',
       city: 'Petaling Jaya',
       address: 'Jalan PJU 8/8A, Damansara Perdana, 47820 Petaling Jaya',
     });
 
-    await stationRepo.save([station1, station2, station3]);
+    const savedStations = await stationRepo.save([station1, station2, station3]);
 
     console.log('Seeding lockers...');
     const locker1 = lockerRepo.create({
-      id: 'L-001',
-      station_id: 'ST-1749200000000',
+      station_id: savedStations[0].id,
       size: 'small',
       status: 'available',
       label: 'A-01',
     });
 
     const locker2 = lockerRepo.create({
-      id: 'L-002',
-      station_id: 'ST-1749200000000',
+      station_id: savedStations[0].id,
       size: 'medium',
       status: 'available',
       label: 'A-02',
     });
 
     const locker3 = lockerRepo.create({
-      id: 'L-003',
-      station_id: 'ST-1749200000000',
+      station_id: savedStations[0].id,
       size: 'large',
       status: 'available',
       label: 'B-01',
@@ -73,16 +68,19 @@ async function seed() {
     await lockerRepo.save([locker1, locker2, locker3]);
 
     console.log('Seeding users...');
+    const user1Password = await bcrypt.hash('SecurePass1!', 10);
+    const user2Password = await bcrypt.hash('SecurePass2!', 10);
+
     const user1 = userRepo.create({
-      id: 'U-001',
       name: 'Priya Sharma',
       email: 'priya@example.com',
+      password: user1Password,
     });
 
     const user2 = userRepo.create({
-      id: 'U-002',
       name: 'Ahmad Hassan',
       email: 'ahmad@example.com',
+      password: user2Password,
     });
 
     await userRepo.save([user1, user2]);

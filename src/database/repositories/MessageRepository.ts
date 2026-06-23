@@ -7,21 +7,21 @@ export class MessageRepository extends BaseRepository<Message> {
     super(repository);
   }
 
-  async findByUserId(user_id: string): Promise<Message[]> {
+  async findByUserId(user_id: number): Promise<Message[]> {
     return this.repository.find({
       where: { user_id } as any,
       order: { created_at: 'DESC' } as any,
     });
   }
 
-  async findUnreadByUserId(user_id: string): Promise<Message[]> {
+  async findUnreadByUserId(user_id: number): Promise<Message[]> {
     return this.repository.find({
       where: { user_id, is_read: false } as any,
       order: { created_at: 'DESC' } as any,
     });
   }
 
-  async markAsRead(id: string): Promise<Message | null> {
+  async markAsRead(id: number): Promise<Message | null> {
     const message = await this.findById(id);
     if (message) {
       message.is_read = true;

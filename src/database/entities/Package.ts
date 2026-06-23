@@ -1,6 +1,6 @@
 import {
   Entity,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   ManyToOne,
@@ -22,14 +22,14 @@ export type DeliveryStatus = 'ASSIGNED_TO_AGENT' | 'READY_TO_PICK' | 'PICKED';
 @Index('idx_packages_delivery_status', ['delivery_status'])
 @Unique(['pickup_code'])
 export class Package {
-  @PrimaryColumn({ type: 'varchar', length: 191 })
-  id!: string;
+  @PrimaryGeneratedColumn({ type: 'int' })
+  id!: number;
 
-  @Column({ type: 'varchar', length: 191 })
-  locker_id!: string;
+  @Column({ type: 'int' })
+  locker_id!: number;
 
-  @Column({ type: 'varchar', length: 191 })
-  user_id!: string;
+  @Column({ type: 'int' })
+  user_id!: number;
 
   @Column({ type: 'enum', enum: ['small', 'medium', 'large'] })
   package_size!: PackageSize;

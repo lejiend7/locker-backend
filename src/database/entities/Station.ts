@@ -1,12 +1,12 @@
-import { Entity, PrimaryColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
 import { Locker } from './Locker.js';
 
 export type StationType = 'mall' | 'office' | 'residential';
 
 @Entity('stations')
 export class Station {
-  @PrimaryColumn({ type: 'varchar', length: 191 })
-  id!: string;
+  @PrimaryGeneratedColumn({ type: 'int' })
+  id!: number;
 
   @Column({ type: 'varchar', length: 255 })
   name!: string;

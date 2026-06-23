@@ -1,18 +1,21 @@
-import { Entity, PrimaryColumn, Column, CreateDateColumn, OneToMany, Unique } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, Unique } from 'typeorm';
 import { Package } from './Package.js';
 import { Message } from './Message.js';
 
 @Entity('users')
 @Unique(['email'])
 export class User {
-  @PrimaryColumn({ type: 'varchar', length: 191 })
-  id!: string;
+  @PrimaryGeneratedColumn({ type: 'int' })
+  id!: number;
 
   @Column({ type: 'varchar', length: 255 })
   name!: string;
 
   @Column({ type: 'varchar', length: 191 })
   email!: string;
+
+  @Column({ type: 'varchar', length: 255 })
+  password!: string;
 
   @CreateDateColumn()
   created_at!: Date;

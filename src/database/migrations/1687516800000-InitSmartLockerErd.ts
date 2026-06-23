@@ -6,7 +6,7 @@ export class InitSmartLockerErd1687516800000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `CREATE TABLE \`stations\` (
-        \`id\` varchar(191) NOT NULL,
+        \`id\` int NOT NULL AUTO_INCREMENT,
         \`name\` varchar(255) NOT NULL,
         \`type\` enum ('mall', 'office', 'residential') NOT NULL,
         \`city\` varchar(191) NOT NULL,
@@ -18,8 +18,8 @@ export class InitSmartLockerErd1687516800000 implements MigrationInterface {
 
     await queryRunner.query(
       `CREATE TABLE \`lockers\` (
-        \`id\` varchar(191) NOT NULL,
-        \`station_id\` varchar(191) NOT NULL,
+        \`id\` int NOT NULL AUTO_INCREMENT,
+        \`station_id\` int NOT NULL,
         \`size\` enum ('small', 'medium', 'large') NOT NULL,
         \`status\` enum ('available', 'occupied') NOT NULL DEFAULT 'available',
         \`label\` varchar(191) NOT NULL,
@@ -34,9 +34,10 @@ export class InitSmartLockerErd1687516800000 implements MigrationInterface {
 
     await queryRunner.query(
       `CREATE TABLE \`users\` (
-        \`id\` varchar(191) NOT NULL,
+        \`id\` int NOT NULL AUTO_INCREMENT,
         \`name\` varchar(255) NOT NULL,
         \`email\` varchar(191) NOT NULL,
+        \`password\` varchar(255) NOT NULL,
         \`created_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         UNIQUE INDEX \`IDX_users_email\` (\`email\`),
         PRIMARY KEY (\`id\`)
@@ -45,9 +46,9 @@ export class InitSmartLockerErd1687516800000 implements MigrationInterface {
 
     await queryRunner.query(
       `CREATE TABLE \`packages\` (
-        \`id\` varchar(191) NOT NULL,
-        \`locker_id\` varchar(191) NOT NULL,
-        \`user_id\` varchar(191) NOT NULL,
+        \`id\` int NOT NULL AUTO_INCREMENT,
+        \`locker_id\` int NOT NULL,
+        \`user_id\` int NOT NULL,
         \`package_size\` enum ('small', 'medium', 'large') NOT NULL,
         \`delivery_status\` enum ('ASSIGNED_TO_AGENT', 'READY_TO_PICK', 'PICKED') NOT NULL,
         \`pickup_code\` varchar(191) NULL,
@@ -70,9 +71,9 @@ export class InitSmartLockerErd1687516800000 implements MigrationInterface {
 
     await queryRunner.query(
       `CREATE TABLE \`messages\` (
-        \`id\` varchar(191) NOT NULL,
-        \`user_id\` varchar(191) NOT NULL,
-        \`package_id\` varchar(191) NOT NULL,
+        \`id\` int NOT NULL AUTO_INCREMENT,
+        \`user_id\` int NOT NULL,
+        \`package_id\` int NOT NULL,
         \`title\` varchar(255) NOT NULL,
         \`body\` text NOT NULL,
         \`locker_label\` varchar(191) NOT NULL,

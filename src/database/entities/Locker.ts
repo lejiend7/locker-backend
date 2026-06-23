@@ -1,6 +1,6 @@
 import {
   Entity,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   ManyToOne,
@@ -18,11 +18,11 @@ export type LockerStatus = 'available' | 'occupied';
 @Index('idx_lockers_station_id', ['station_id'])
 @Index('idx_lockers_status', ['status'])
 export class Locker {
-  @PrimaryColumn({ type: 'varchar', length: 191 })
-  id!: string;
+  @PrimaryGeneratedColumn({ type: 'int' })
+  id!: number;
 
-  @Column({ type: 'varchar', length: 191 })
-  station_id!: string;
+  @Column({ type: 'int' })
+  station_id!: number;
 
   @Column({ type: 'enum', enum: ['small', 'medium', 'large'] })
   size!: LockerSize;

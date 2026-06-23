@@ -7,11 +7,11 @@ export class PackageRepository extends BaseRepository<Package> {
     super(repository);
   }
 
-  async findByUserId(user_id: string): Promise<Package[]> {
+  async findByUserId(user_id: number): Promise<Package[]> {
     return this.find({ user_id } as any);
   }
 
-  async findByLockerId(locker_id: string): Promise<Package | null> {
+  async findByLockerId(locker_id: number): Promise<Package | null> {
     return this.findOne({ locker_id } as any);
   }
 
@@ -19,14 +19,14 @@ export class PackageRepository extends BaseRepository<Package> {
     return this.findOne({ pickup_code } as any);
   }
 
-  async findByPickupCodeAndLockerId(pickup_code: string, locker_id: string): Promise<Package | null> {
+  async findByPickupCodeAndLockerId(pickup_code: string, locker_id: number): Promise<Package | null> {
     return this.repository.findOne({
       where: { pickup_code, locker_id } as any,
       relations: ['locker', 'user'],
     });
   }
 
-  async findReadyToPickByLockerId(locker_id: string): Promise<Package | null> {
+  async findReadyToPickByLockerId(locker_id: number): Promise<Package | null> {
     return this.repository.findOne({
       where: { locker_id, delivery_status: 'READY_TO_PICK' } as any,
     });

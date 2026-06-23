@@ -1,6 +1,6 @@
 import {
   Entity,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   ManyToOne,
@@ -14,14 +14,14 @@ import { Package } from './Package.js';
 @Index('idx_messages_user_id', ['user_id'])
 @Index('idx_messages_package_id', ['package_id'])
 export class Message {
-  @PrimaryColumn({ type: 'varchar', length: 191 })
-  id!: string;
+  @PrimaryGeneratedColumn({ type: 'int' })
+  id!: number;
 
-  @Column({ type: 'varchar', length: 191 })
-  user_id!: string;
+  @Column({ type: 'int' })
+  user_id!: number;
 
-  @Column({ type: 'varchar', length: 191 })
-  package_id!: string;
+  @Column({ type: 'int' })
+  package_id!: number;
 
   @Column({ type: 'varchar', length: 255 })
   title!: string;
