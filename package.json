@@ -2,16 +2,16 @@
   "name": "locker-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:generate": "prisma generate --schema src/database/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema src/database/schema.prisma",
-    "db:migrate:deploy": "prisma migrate deploy --schema src/database/schema.prisma",
-    "db:migrate:status": "prisma migrate status --schema src/database/schema.prisma",
-    "db:seed": "node src/database/seeders/seed.js"
+    "build": "tsc",
+    "db:migrate": "tsx node_modules/.bin/typeorm migration:run -d src/database/data-source.ts",
+    "db:migration:create": "tsx node_modules/.bin/typeorm migration:create",
+    "db:migrate:revert": "tsx node_modules/.bin/typeorm migration:revert -d src/database/data-source.ts",
+    "db:seed": "tsx src/database/seeders/seed.ts"
   },
   "repository": {
     "type": "git",
@@ -20,20 +20,23 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/lejiend7/locker-backend/issues"
   },
   "homepage": "https://github.com/lejiend7/locker-backend#readme",
   "dependencies": {
-    "@prisma/client": "^5.22.0",
-    "express": "^5.2.1"
+    "dotenv": "^16.4.5",
+    "typeorm": "^0.3.19",
+    "mysql2": "^3.10.0",
+    "express": "^5.2.1",
+    "reflect-metadata": "^0.2.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14",
-    "prisma": "^5.22.0"
-  },
-  "prisma": {
-    "seed": "node src/database/seeders/seed.js"
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "ts-node": "^10.9.2"
   }
 }
