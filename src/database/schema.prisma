@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum station_type {
+  mall
+  office
+  residential
+}
+
+enum locker_size {
+  small
+  medium
+  large
+}
+
+enum locker_status {
+  available
+  occupied
+}
+
+enum delivery_status {
+  ASSIGNED_TO_AGENT
+  READY_TO_PICK
+  PICKED
+}
+
+model stations {
+  id         String       @id
+  name       String
+  type       station_type
+  city       String
+  address    String
+  created_at DateTime     @default(now())
+
+  lockers    lockers[]
+
+  @@index([type])
+  @@index([city])
+}
+
+model lockers {
+  id         String        @id
+  station_id String
+  size       locker_size
+  status     locker_status @default(available)
+  label      String
+  version    Int           @default(1)
+  created_at DateTime      @default(now())
+
+  station    stations      @relation(fields: [station_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  packages   packages[]
+
+  @@index([station_id])
+  @@index([status])
+}
+
+model users {
+  id         String     @id
+  name       String
+  email      String     @unique
+  created_at DateTime   @default(now())
+
+  packages   packages[]
+  messages   messages[]
+}
+
+model packages {
+  id              String          @id
+  locker_id       String
+  user_id         String
+  package_size    locker_size
+  delivery_status delivery_status
+  pickup_code     String?         @unique
+  customer_name   String
+  assigned_at     DateTime
+  deposited_at    DateTime?
+  pickup_at       DateTime?
+  retrieved_at    DateTime?
+  storage_price   Decimal?        @db.Decimal(6, 2)
+  created_at      DateTime        @default(now())
+
+  locker          lockers         @relation(fields: [locker_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user            users           @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  messages        messages[]
+
+  @@index([locker_id])
+  @@index([user_id])
+  @@index([delivery_status])
+}
+
+model messages {
+  id           String    @id
+  user_id      String
+  package_id   String
+  title        String
+  body         String
+  locker_label String
+  pickup_code  String
+  is_read      Boolean   @default(false)
+  created_at   DateTime  @default(now())
+
+  user         users     @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  package      packages  @relation(fields: [package_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([user_id])
+  @@index([package_id])
+}
