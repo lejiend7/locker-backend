@@ -1,4 +1,4 @@
-import { AppDataSource } from '@/database/data-source.js';
+import { AppDataSource } from '@/database/data-source.ts';
 
 export type HealthStatus = {
   status: 'ok' | 'error';

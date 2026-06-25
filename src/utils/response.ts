@@ -18,11 +18,7 @@ export function buildApiResponse<T>(options: {
       return [] as T[];
     }
 
-    if (Array.isArray(options.data)) {
-      return options.data;
-    }
-
-    return [options.data];
+    return options.data;
   })();
 
   const normalizedErrors = (() => {

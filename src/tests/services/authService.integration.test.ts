@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Repository } from 'typeorm';
-import { AppDataSource } from '@/database/data-source.js';
-import { User } from '@/database/entities/User.js';
-import { AuthService } from '@/services/authService.js';
+import { AppDataSource } from '@/database/data-source.ts';
+import { User } from '@/database/entities/User.ts';
+import { AuthService } from '@/services/authService.ts';
 
 function createRandomTestIdentity(prefix = 'test') {
   const randomSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;

@@ -8,8 +8,8 @@ import {
   Index,
   JoinColumn,
 } from 'typeorm';
-import { Station } from './Station.js';
-import { Package } from './Package.js';
+import { Station } from './Station.ts';
+import { Package } from './Package.ts';
 
 export type LockerSize = 'small' | 'medium' | 'large';
 export type LockerStatus = 'available' | 'occupied';

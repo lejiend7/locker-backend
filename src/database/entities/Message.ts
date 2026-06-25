@@ -7,8 +7,8 @@ import {
   Index,
   JoinColumn,
 } from 'typeorm';
-import { User } from '@/database/entities/User.js';
-import { Package } from '@/database/entities/Package.js';
+import { User } from '@/database/entities/User.ts';
+import { Package } from '@/database/entities/Package.ts';
 
 @Entity('messages')
 @Index('idx_messages_user_id', ['user_id'])

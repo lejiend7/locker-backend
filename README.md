@@ -1,19 +1,23 @@
 # SmartLocker Backend API
 
-A Node.js/Express backend for the SmartLocker package management system. Built with **TypeORM**, **TypeScript**, and **MySQL** using the **Repository pattern** for SOLID architecture.
+A Node.js/Express backend for the SmartLocker package management system. It uses **TypeScript**, **Express**, **TypeORM**, **MySQL**, **JWT-based auth**, and **Vitest** to support a modular API with controllers, middleware, services, repositories, and tests.
 
 ## 📋 Table of Contents
 
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Setup & Installation](#setup--installation)
-- [Environment Configuration](#environment-configuration)
-- [Database Migrations](#database-migrations)
-- [Development](#development)
-- [Testing](#testing)
-- [Production](#production)
-- [API Reference](#api-reference)
-- [Architecture](#architecture)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Path Alias Convention](#-path-alias-convention)
+- [Setup & Installation](#-setup--installation)
+- [Environment Configuration](#-environment-configuration)
+- [Database Migrations](#-database-migrations)
+- [Data Seeding](#-data-seeding)
+- [Development](#-development)
+- [Testing](#-testing)
+- [Production](#-production)
+- [API Reference](#-api-reference)
+- [Architecture](#-architecture)
+- [Request Lifecycle (End-to-End)](#-request-lifecycle-end-to-end)
+- [Next Steps](#-next-steps)
 
 ---
 
@@ -23,10 +27,13 @@ A Node.js/Express backend for the SmartLocker package management system. Built w
 |-----------|---------|
 | **Node.js** | Runtime |
 | **Express.js** | HTTP server framework |
-| **TypeORM** | Object-relational mapping (MySQL) |
-| **TypeScript** | Type-safe language |
+| **TypeScript** | Type-safe application layer |
+| **TypeORM** | ORM and database migrations |
 | **MySQL** | Relational database |
-| **tsx** | TypeScript execution & dev server |
+| **jsonwebtoken** | JWT authentication |
+| **bcryptjs** | Password hashing |
+| **Vitest** | Unit and integration testing |
+| **tsx** | TypeScript execution and dev server |
 
 ---
 
@@ -34,29 +41,23 @@ A Node.js/Express backend for the SmartLocker package management system. Built w
 
 ```
 src/
-├── database/
-│   ├── data-source.ts              # TypeORM MySQL connection config
-│   ├── entities/                   # Database models (TypeORM decorators)
-│   │   ├── Station.ts
-│   │   ├── Locker.ts
-│   │   ├── User.ts
-│   │   ├── Package.ts
-│   │   └── Message.ts
-│   ├── migrations/                 # Auto-generated SQL migrations
-│   │   └── 1687516800000-InitSmartLockerErd.ts
-│   ├── repositories/               # Data access layer (SOLID)
-│   │   ├── BaseRepository.ts       # Generic CRUD operations
-│   │   ├── StationRepository.ts
-│   │   ├── LockerRepository.ts
-│   │   ├── UserRepository.ts
-│   │   ├── PackageRepository.ts
-│   │   └── MessageRepository.ts
-│   └── seeders/
-│       └── seed.ts                 # Demo data seeder
 ├── app.ts                           # Express app factory
-└── server.ts                        # Server bootstrap & connection init
+├── server.ts                        # Server entrypoint
+├── controllers/                     # HTTP request handlers
+├── middleware/                      # Auth, guest, CORS, and other middleware
+├── routes/                          # Route registration
+├── services/                        # Business logic layer
+├── utils/                           # Shared response and helper utilities
+├── database/
+│   ├── data-source.ts               # TypeORM connection config
+│   ├── entities/                    # TypeORM entity definitions
+│   ├── migrations/                  # Schema evolution files
+│   ├── repositories/                # Data access abstractions
+│   └── seeders/                     # Data seed scripts
+├── tests/                           # Unit and integration tests
+└── public/                          # Static assets served by Express
 
-dist/                                # Compiled JavaScript (build output)
+dist/                                # Compiled JavaScript output
 tsconfig.json                        # TypeScript compiler configuration
 ```
 
@@ -332,41 +333,85 @@ const station = await customStationRepo.findByCity('Petaling Jaya');
 
 Foreign keys use `ON DELETE RESTRICT` and `ON UPDATE CASCADE` for data integrity.
 
----
+### Request Lifecycle (End-to-End)
 
-## 📖 Next Steps
+Yes — the flow should start from the incoming HTTP request. A typical request follows this path through the backend:
 
-1. **Implement API routes** — Wire Express handlers in `src/app.ts`
-2. **Create services** — Business logic layer above repositories
-3. **Add validation** — Input validation middleware
-4. **Add authentication** — Supabase or JWT tokens
-5. **Write tests** — Unit tests for repositories and services
-6. **Deploy** — Push to AWS/Docker with CI/CD
+### Consistent API Response Shape
 
----
+All API responses should use the same envelope, regardless of success or error. The shared helper in [src/utils/response.ts](src/utils/response.ts) builds responses in the following shape:
 
-## 🤝 Contributing
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Operation completed successfully",
+  "data": [],
+  "errors": []
+}
+```
 
-1. Create a new branch: `git checkout -b feature/your-feature`
-2. Make changes and build: `npm run build`
-3. Commit: `git commit -m "Add feature"`
-4. Push: `git push origin feature/your-feature`
-5. Create a pull request
+And for failures:
 
----
+```json
+{
+  "success": false,
+  "statusCode": 404,
+  "message": "Route not found",
+  "data": [],
+  "errors": ["Route not found"]
+}
+```
 
-## 📝 License
+This keeps the API predictable for frontend consumers and makes both successful and unsuccessful responses easy to handle consistently.
 
-ISC
 
----
+1. **Client sends an HTTP request** to the Express server.
+2. The app bootstrap in [src/app.ts](src/app.ts) initializes the Express app and applies core middleware such as JSON parsing and static file serving.
+3. The CORS middleware in [src/middleware/corsMiddleware.ts](src/middleware/corsMiddleware.ts) runs first for cross-origin requests, adds the required headers, and handles preflight `OPTIONS` requests.
+4. The route layer in [src/services/routeService.ts](src/services/routeService.ts) mounts the router and registers the API 404 fallback plus the centralized error handler.
+5. The request is matched in [src/routes/index.ts](src/routes/index.ts), where route-specific middleware such as guest or auth checks run before the controller.
+6. The controller in [src/controllers](src/controllers) handles the request, validates the context, and delegates business logic to the appropriate service.
+7. The service uses repositories and database entities in [src/database](src/database) to read or write data.
+8. The response is returned in the shared API envelope through [src/utils/response.ts](src/utils/response.ts).
+9. If something fails, the error is passed through the route service error middleware and normalized into a consistent API error response.
 
-## 📞 Support
+A simple example flow for an authenticated request looks like this:
 
-For questions about:
-- **ERD/API spec** — See [ERD_README.md](./ERD_README.md)
-- **Database schema** — Check migrations in `src/database/migrations/`
-- **Repository patterns** — Review `src/database/repositories/`
+```text
+HTTP Request
+  -> app.ts
+  -> corsMiddleware
+  -> routeService.mount(app)
+  -> routes/index.ts
+  -> authMiddleware / guestMiddleware
+  -> controller
+  -> service
+  -> repository
+  -> entity
+  -> database
+  -> response envelope
+  -> client
+```
+
+For the data layer, the flow is:
+
+```text
+entity definition
+  -> migration
+  -> database schema
+  -> repository
+  -> service
+  -> controller response
+```
+
+In practice:
+- **Entities** define the TypeORM model shape in [src/database/entities](src/database/entities).
+- **Migrations** evolve the database schema safely in [src/database/migrations](src/database/migrations).
+- **Repositories** encapsulate data access logic in [src/database/repositories](src/database/repositories).
+- **Seeders** populate development/demo data in [src/database/seeders](src/database/seeders).
+
+This structure makes the backend easy to follow: middleware handles cross-cutting concerns, routes decide which handler to run, controllers coordinate the flow, services own the business logic, and the database layer stays organized through entities, migrations, repositories, and seeders.
 
 ---
 

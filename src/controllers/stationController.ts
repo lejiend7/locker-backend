@@ -1,19 +1,16 @@
-import { Router } from 'express';
-import { AppDataSource } from '@/database/data-source.js';
-import { Station } from '@/database/entities/Station.js';
-import { StationRepository } from '@/database/repositories/StationRepository.js';
-import { requireAuth } from '@/middleware/authMiddleware.js';
-import { asyncHandler } from '@/utils/errorHandler.js';
-import { buildApiResponse } from '@/utils/response.js';
+import { type Request, type Response } from 'express';
+import { AppDataSource } from '@/database/data-source.ts';
+import { Station } from '@/database/entities/Station.ts';
+import { StationRepository } from '@/database/repositories/StationRepository.ts';
+import { asyncHandler } from '@/utils/asyncHandler.ts';
+import { buildApiResponse } from '@/utils/response.ts';
 
-const router = Router();
-const jwtSecret = process.env.JWT_SECRET || 'dev-only-jwt-secret';
 const stationRepository = new StationRepository(AppDataSource.getRepository(Station));
 
-router.get(
-  '/',
-  requireAuth(jwtSecret),
-  asyncHandler(async (req, res) => {
+export class StationController {
+  list = asyncHandler((req: Request, res: Response) => this.handleList(req, res));
+
+  private async handleList(req: Request, res: Response) {
     if (!req.authUser || req.authUser.role !== 'admin') {
       return res.status(403).json(
         buildApiResponse({
@@ -36,7 +33,7 @@ router.get(
         data: stations,
       })
     );
-  })
-);
+  }
+}
 
-export default router;
+export const stationController = new StationController();

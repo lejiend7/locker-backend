@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
-import { Locker } from './Locker.js';
+import { Locker } from './Locker.ts';
 
 export type StationType = 'mall' | 'office' | 'residential';
 

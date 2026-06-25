@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, Unique } from 'typeorm';
-import { Package } from '@/database/entities/Package.js';
-import { Message } from '@/database/entities/Message.js';
+import { Package } from '@/database/entities/Package.ts';
+import { Message } from '@/database/entities/Message.ts';
 
 @Entity('users')
 @Unique(['email'])

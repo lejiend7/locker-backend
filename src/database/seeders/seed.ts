@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import bcrypt from 'bcryptjs';
-import { AppDataSource } from '@/database/data-source.js';
-import { Station } from '@/database/entities/Station.js';
-import { Locker } from '@/database/entities/Locker.js';
-import { User } from '@/database/entities/User.js';
+import { AppDataSource } from '@/database/data-source.ts';
+import { Station } from '@/database/entities/Station.ts';
+import { Locker } from '@/database/entities/Locker.ts';
+import { User } from '@/database/entities/User.ts';
 
 async function seed() {
   try {
