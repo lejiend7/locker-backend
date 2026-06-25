@@ -10,6 +10,7 @@ A Node.js/Express backend for the SmartLocker package management system. Built w
 - [Environment Configuration](#environment-configuration)
 - [Database Migrations](#database-migrations)
 - [Development](#development)
+- [Testing](#testing)
 - [Production](#production)
 - [API Reference](#api-reference)
 - [Architecture](#architecture)
@@ -221,6 +222,30 @@ npm run build
 ```
 
 This validates all TypeScript types and generates JavaScript ready for production.
+
+---
+
+## 🧪 Testing
+
+Run the backend tests locally with the following commands:
+
+```bash
+npm run test:unit
+```
+
+This runs the unit-test suite only and excludes integration tests. It is the command used by the GitHub Actions CI workflow.
+
+```bash
+npm test
+```
+
+This runs the full Vitest suite, including integration tests when available.
+
+```bash
+npm run test:watch
+```
+
+Use this for interactive test development while editing services and repositories.
 
 ---
 
