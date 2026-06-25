@@ -341,11 +341,32 @@
     <p>A lightweight REST API powering the SmartLocker network — handling stations, packages, delivery agents, and customer pickups.</p>
     <div class="base-url">
       <span class="base-url-label">Base URL</span>
-      <span class="base-url-value">dev-api-smart-locker.lejiend7.com/api/v1</span>
+      <span class="base-url-value">/api</span>
     </div>
   </div>
 
- 
+  <div class="endpoints">
+    <div class="section-label">Backend</div>
+    <div class="section-title">Health & Database Check</div>
+    <div class="endpoint-group">
+      <div class="group-name">Status</div>
+      <div class="endpoint-row">
+        <span class="method get">GET</span>
+        <span class="endpoint-path">/health</span>
+        <span class="endpoint-desc">Returns the service status and a live MySQL connection check using <em>SELECT VERSION()</em>.</span>
+      </div>
+      <div class="endpoint-row">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/api/auth/signup</span>
+        <span class="endpoint-desc">Creates a new user account and stores it in the database.</span>
+      </div>
+      <div class="endpoint-row">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/api/auth/login</span>
+        <span class="endpoint-desc">Authenticates a user against the database and returns a JWT.</span>
+      </div>
+    </div>
+  </div>
 
   <!-- STATUS CODES -->
   <div class="statuses">
