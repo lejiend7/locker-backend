@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildApiResponse } from '@/utils/response.js';
 
 describe('buildApiResponse', () => {
-  it('wraps object data in an array and returns empty errors when none are provided', () => {
+  it('preserves object data and returns empty errors when none are provided', () => {
     const response = buildApiResponse({
       success: true,
       statusCode: 200,
@@ -14,7 +14,7 @@ describe('buildApiResponse', () => {
       success: true,
       statusCode: 200,
       message: 'Stations fetched successfully',
-      data: [{ id: 1, name: 'The Curve' }],
+      data: { id: 1, name: 'The Curve' },
       errors: [],
     });
   });

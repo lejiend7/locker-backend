@@ -24,7 +24,7 @@ export const createApp = (): Express => {
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
 
     if (req.method === 'OPTIONS' && req.path.startsWith('/api')) {
-      const knownApiPrefixes = ['/api', '/api/health', '/api/auth', '/api/stations'];
+      const knownApiPrefixes = ['/api', '/api/health', '/api/auth', '/api/stations', '/api/lockers'];
       const isKnownApiRoute = knownApiPrefixes.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`));
 
       if (isKnownApiRoute) {
