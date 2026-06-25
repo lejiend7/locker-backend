@@ -1,11 +1,11 @@
 import 'reflect-metadata';
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
-import { Station } from './entities/Station.js';
-import { Locker } from './entities/Locker.js';
-import { User } from './entities/User.js';
-import { Package } from './entities/Package.js';
-import { Message } from './entities/Message.js';
+import { Station } from './entities/Station.ts';
+import { Locker } from './entities/Locker.ts';
+import { User } from './entities/User.ts';
+import { Package } from './entities/Package.ts';
+import { Message } from './entities/Message.ts';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',

@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
-import { Package } from '@/database/entities/Package.js';
-import { BaseRepository } from '@/database/repositories/BaseRepository.js';
+import { Package } from '@/database/entities/Package.ts';
+import { BaseRepository } from '@/database/repositories/BaseRepository.ts';
 
 export class PackageRepository extends BaseRepository<Package> {
   constructor(repository: Repository<Package>) {

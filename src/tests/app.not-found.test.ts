@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import { createApp } from '@/app.js';
+import { createApp } from '@/app.ts';
 
 describe('app 404 response standardization', () => {
   it('returns the shared API envelope for unknown routes', async () => {

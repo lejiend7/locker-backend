@@ -1,19 +1,19 @@
-import { Router } from 'express';
-import { AppDataSource } from '@/database/data-source.js';
-import { Locker } from '@/database/entities/Locker.js';
-import { LockerRepository } from '@/database/repositories/LockerRepository.js';
-import { requireAuth } from '@/middleware/authMiddleware.js';
-import { asyncHandler } from '@/utils/errorHandler.js';
-import { buildApiResponse } from '@/utils/response.js';
+import { type Request, type Response } from 'express';
+import { AppDataSource } from '@/database/data-source.ts';
+import { Locker } from '@/database/entities/Locker.ts';
+import { LockerRepository } from '@/database/repositories/LockerRepository.ts';
+import { CreateLockerDto } from '@/dtos/CreateLockerDto.ts';
+import { asyncHandler } from '@/utils/asyncHandler.ts';
+import { buildApiResponse } from '@/utils/response.ts';
 
-const router = Router();
-const jwtSecret = process.env.JWT_SECRET || 'dev-only-jwt-secret';
 const lockerRepository = new LockerRepository(AppDataSource.getRepository(Locker));
 
-router.get(
-  '/',
-  requireAuth(jwtSecret),
-  asyncHandler(async (req, res) => {
+export class LockerController {
+  list = asyncHandler((req: Request, res: Response) => this.handleList(req, res));
+
+  create = asyncHandler((req: Request, res: Response) => this.handleCreate(req, res));
+
+  private async handleList(req: Request, res: Response) {
     if (!req.authUser || req.authUser.role !== 'admin') {
       return res.status(403).json(
         buildApiResponse({
@@ -39,13 +39,9 @@ router.get(
         data: lockers,
       })
     );
-  })
-);
+  }
 
-router.post(
-  '/',
-  requireAuth(jwtSecret),
-  asyncHandler(async (req, res) => {
+  private async handleCreate(req: Request, res: Response) {
     if (!req.authUser || req.authUser.role !== 'admin') {
       return res.status(403).json(
         buildApiResponse({
@@ -58,31 +54,21 @@ router.post(
       );
     }
 
-    const { size, stationId, label } = req.body ?? {};
+    const validation = CreateLockerDto.validate(req.body ?? {});
 
-    if (!size || !stationId || !label) {
+    if (!validation.isValid) {
       return res.status(400).json(
         buildApiResponse({
           success: false,
           statusCode: 400,
-          message: 'Missing required locker fields',
+          message: validation.message,
           data: [],
-          errors: ['size, stationId and label are required'],
+          errors: validation.errors,
         })
       );
     }
 
-    if (!['small', 'medium', 'large'].includes(size)) {
-      return res.status(400).json(
-        buildApiResponse({
-          success: false,
-          statusCode: 400,
-          message: 'Invalid locker size',
-          data: [],
-          errors: ['size must be one of small, medium, large'],
-        })
-      );
-    }
+    const { size, stationId, label } = validation.value;
 
     const createdLocker = await lockerRepository.create({
       station_id: Number(stationId),
@@ -100,7 +86,7 @@ router.post(
         data: createdLocker,
       })
     );
-  })
-);
+  }
+}
 
-export default router;
+export const lockerController = new LockerController();

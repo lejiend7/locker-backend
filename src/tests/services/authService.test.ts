@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { AuthService } from '@/services/authService.js';
+import { AuthService } from '@/services/authService.ts';
 
 function createRandomTestIdentity(prefix = 'test') {
   const randomSuffix = Math.random().toString(36).slice(2, 8);

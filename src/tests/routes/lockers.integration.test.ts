@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import { createApp } from '@/app.js';
-import { AppDataSource } from '@/database/data-source.js';
-import { Station } from '@/database/entities/Station.js';
-import { Locker } from '@/database/entities/Locker.js';
+import { createApp } from '@/app.ts';
+import { AppDataSource } from '@/database/data-source.ts';
+import { Station } from '@/database/entities/Station.ts';
+import { Locker } from '@/database/entities/Locker.ts';
 
-const jwtSecret = process.env.JWT_SECRET || 'dev-only-jwt-secret';
+const jwtSecret = process.env.JWT_SECRET || '';
 function createToken() {
   return jwt.sign({ sub: 'admin-user', email: 'admin@example.com', name: 'Admin User', role: 'admin' }, jwtSecret);
 }

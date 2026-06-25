@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildApiResponse } from '@/utils/response.js';
+import { buildApiResponse } from '@/utils/response.ts';
 
 describe('buildApiResponse', () => {
   it('preserves object data and returns empty errors when none are provided', () => {

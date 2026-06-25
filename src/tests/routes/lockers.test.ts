@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import apiRouter from '@/routes/index.ts';
 
 const { mockCreate, mockFindAll, mockFindByStationId } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
@@ -9,7 +10,7 @@ const { mockCreate, mockFindAll, mockFindByStationId } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/middleware/authMiddleware.js', () => ({
-  requireAuth: () => (req: any, _res: any, next: () => void) => {
+  authMiddleware: (req: any, _res: any, next: () => void) => {
     req.authUser = {
       sub: 'admin-user',
       email: 'admin@example.com',
@@ -36,12 +37,10 @@ vi.mock('@/database/repositories/LockerRepository.js', () => ({
   },
 }));
 
-import lockersRouter from '@/routes/lockers.js';
-
 function createTestApp() {
   const app = express();
   app.use(express.json());
-  app.use('/api/lockers', lockersRouter);
+  app.use('/api', apiRouter);
   return app;
 }
 
