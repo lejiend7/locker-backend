@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRouter from './routes/index.js';
 import { HealthService } from './services/healthService.js';
+import { LandingPageService } from './services/landingPageService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +12,7 @@ const __dirname = path.dirname(__filename);
 export const createApp = (): Express => {
   const app = express();
   const healthService = new HealthService();
+  const landingPageService = new LandingPageService();
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -29,7 +31,8 @@ export const createApp = (): Express => {
 
   // Serve landing page
   app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+    const landingPagePath = landingPageService.getLandingPagePath();
+    res.sendFile(landingPagePath);
   });
 
   app.use('/api', apiRouter);

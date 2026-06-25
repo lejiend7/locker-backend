@@ -15,7 +15,7 @@ export const AppDataSource = new DataSource({
   password: process.env.MYSQL_PASSWORD || '',
   database: process.env.DB_NAME || '',
   synchronize: false,
-  logging: process.env.NODE_ENV === 'development',
+  logging: false,
   entities: [Station, Locker, User, Package, Message],
   migrations: ['src/database/migrations/*.ts'],
   migrationsTableName: 'migrations',

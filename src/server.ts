@@ -15,8 +15,8 @@ async function bootstrap() {
 
     // Start server
     app.listen(PORT, () => {
-      console.log(`🚀 SmartLocker API running on http://localhost:${PORT}`);
-      console.log(`📊 Database: ${process.env.DB_NAME || 'smartlocker'}`);
+      console.log(`SmartLocker API running on http://localhost:${PORT}`);
+      console.log(`Database: ${process.env.DB_NAME || 'smartlocker'}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

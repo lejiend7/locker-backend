@@ -20,6 +20,12 @@ export class HealthService {
       const version = result?.[0]?.version || 'unknown';
       const connected = Boolean(result?.[0]?.version);
 
+      console.log('[health] database connected', {
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'smartlocker',
+        version,
+      });
+
       return {
         status: connected ? 'ok' : 'error',
         service: 'SmartLocker API',
@@ -32,6 +38,12 @@ export class HealthService {
         },
       };
     } catch (error) {
+      console.error('[health] database connection failed', {
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'smartlocker',
+        error: error instanceof Error ? error.message : 'Unknown database error',
+      });
+
       return {
         status: 'error',
         service: 'SmartLocker API',
