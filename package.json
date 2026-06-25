@@ -12,8 +12,9 @@
     "db:migrate": "tsx node_modules/.bin/typeorm migration:run -d src/database/data-source.ts",
     "db:migration:create": "tsx node_modules/.bin/typeorm migration:create",
     "db:migrate:revert": "tsx node_modules/.bin/typeorm migration:revert -d src/database/data-source.ts",
-    "db:seed": "tsx src/database/seeders/seed-users.ts",
-    "db:seed:users": "tsx src/database/seeders/seed-users.ts"
+    "db:seed": "tsx src/database/seeders/seed-stations.ts",
+    "db:seed:users": "tsx src/database/seeders/seed-users.ts",
+    "db:seed:stations": "tsx src/database/seeders/seed-stations.ts"
   },
   "repository": {
     "type": "git",
