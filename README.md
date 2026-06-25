@@ -413,6 +413,10 @@ In practice:
 
 This structure makes the backend easy to follow: middleware handles cross-cutting concerns, routes decide which handler to run, controllers coordinate the flow, services own the business logic, and the database layer stays organized through entities, migrations, repositories, and seeders.
 
+### Architecture Diagram
+
+![Locker Backend Architecture](./src/public/Smart%20Locker%20Backend%20Structure.drawio.png)
+
 ---
 
 **SmartLocker Backend** © 2026 — Built with ❤️ using TypeORM + TypeScript
