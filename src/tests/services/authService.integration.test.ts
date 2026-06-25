@@ -31,40 +31,93 @@ describe('AuthService integration', () => {
     }
   });
 
-  it('creates a real user in the database and allows login with the same credentials', async () => {
-    const identity = createRandomTestIdentity('test');
+  it('creates customer, delivery agent, and admin users and allows login for each role', async () => {
     const password = 'SecurePass1!';
+    const customerIdentity = createRandomTestIdentity('customer');
+    const agentIdentity = createRandomTestIdentity('agent');
+    const adminIdentity = createRandomTestIdentity('admin');
 
-    const signupResult = await authService.signup({
-      name: identity.name,
-      email: identity.email,
+    const customerSignupResult = await authService.signup({
+      name: customerIdentity.name,
+      email: customerIdentity.email,
       password,
       role: 'customer',
     });
 
-    expect(signupResult.success).toBe(true);
-    if (!signupResult.success) {
-      throw new Error(signupResult.message);
+    expect(customerSignupResult.success).toBe(true);
+    if (!customerSignupResult.success) {
+      throw new Error(customerSignupResult.message);
     }
 
-    const storedUser = await userRepository.findOne({ where: { email: identity.email } });
-    expect(storedUser).toBeTruthy();
-    expect(storedUser?.name).toBe(identity.name);
-    expect(storedUser?.email).toBe(identity.email);
-    expect(storedUser?.role).toBe('customer');
+    const agentSignupResult = await authService.signup({
+      name: agentIdentity.name,
+      email: agentIdentity.email,
+      password,
+      role: 'delivery_agent',
+    });
 
-    const loginResult = await authService.login({
-      email: identity.email,
+    expect(agentSignupResult.success).toBe(true);
+    if (!agentSignupResult.success) {
+      throw new Error(agentSignupResult.message);
+    }
+
+    const adminSignupResult = await authService.signupAdmin({
+      name: adminIdentity.name,
+      email: adminIdentity.email,
       password,
     });
 
-    expect(loginResult.success).toBe(true);
-    if (!loginResult.success) {
-      throw new Error(loginResult.message);
+    expect(adminSignupResult.success).toBe(true);
+    if (!adminSignupResult.success) {
+      throw new Error(adminSignupResult.message);
     }
 
-    expect(loginResult.data.user.email).toBe(identity.email);
-    expect(loginResult.data.user.name).toBe(identity.name);
-    expect(loginResult.data.user.role).toBe('customer');
+    const storedCustomer = await userRepository.findOne({ where: { email: customerIdentity.email } });
+    const storedAgent = await userRepository.findOne({ where: { email: agentIdentity.email } });
+    const storedAdmin = await userRepository.findOne({ where: { email: adminIdentity.email } });
+
+    expect(storedCustomer?.name).toBe(customerIdentity.name);
+    expect(storedCustomer?.email).toBe(customerIdentity.email);
+    expect(storedCustomer?.role).toBe('customer');
+
+    expect(storedAgent?.name).toBe(agentIdentity.name);
+    expect(storedAgent?.email).toBe(agentIdentity.email);
+    expect(storedAgent?.role).toBe('delivery_agent');
+
+    expect(storedAdmin?.name).toBe(adminIdentity.name);
+    expect(storedAdmin?.email).toBe(adminIdentity.email);
+    expect(storedAdmin?.role).toBe('admin');
+
+    const customerLoginResult = await authService.login({
+      email: customerIdentity.email,
+      password,
+    });
+    const agentLoginResult = await authService.login({
+      email: agentIdentity.email,
+      password,
+    });
+    const adminLoginResult = await authService.login({
+      email: adminIdentity.email,
+      password,
+    });
+
+    expect(customerLoginResult.success).toBe(true);
+    if (!customerLoginResult.success) {
+      throw new Error(customerLoginResult.message);
+    }
+
+    expect(agentLoginResult.success).toBe(true);
+    if (!agentLoginResult.success) {
+      throw new Error(agentLoginResult.message);
+    }
+
+    expect(adminLoginResult.success).toBe(true);
+    if (!adminLoginResult.success) {
+      throw new Error(adminLoginResult.message);
+    }
+
+    expect(customerLoginResult.data.user.role).toBe('customer');
+    expect(agentLoginResult.data.user.role).toBe('delivery_agent');
+    expect(adminLoginResult.data.user.role).toBe('admin');
   });
 });

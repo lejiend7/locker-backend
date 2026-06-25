@@ -61,7 +61,40 @@ tsconfig.json                        # TypeScript compiler configuration
 
 ---
 
-## 🚀 Setup & Installation
+## � Path Alias Convention
+
+The backend uses the `@` path alias to reference modules from the `src` root. This keeps imports short, explicit, and easy to trace compared with long relative chains like `../../...`.
+
+### Why we use it
+
+- Better project structure and maintainability
+- More readable imports in routes, services, and database code
+- Easier to follow module ownership and dependencies
+- Less brittle when files move around
+
+### Example
+
+Before:
+
+```ts
+import authRouter from './auth.js';
+import stationsRouter from './stations.js';
+import { buildApiResponse } from '../../../utils/response.js';
+```
+
+After:
+
+```ts
+import authRouter from '@/routes/auth.js';
+import stationsRouter from '@/routes/stations.js';
+import { buildApiResponse } from '@/utils/response.js';
+```
+
+This convention is configured in `tsconfig.json` and should be used consistently across the backend codebase.
+
+---
+
+## �🚀 Setup & Installation
 
 ### Prerequisites
 

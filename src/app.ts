@@ -6,6 +6,7 @@ import apiRouter from './routes/index.js';
 import { HealthService } from './services/healthService.js';
 import { LandingPageService } from './services/landingPageService.js';
 import { errorHandler } from './utils/errorHandler.js';
+import { buildApiResponse } from './utils/response.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,9 +23,14 @@ export const createApp = (): Express => {
     res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
 
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(204);
-      return;
+    if (req.method === 'OPTIONS' && req.path.startsWith('/api')) {
+      const knownApiPrefixes = ['/api', '/api/health', '/api/auth', '/api/stations'];
+      const isKnownApiRoute = knownApiPrefixes.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`));
+
+      if (isKnownApiRoute) {
+        res.sendStatus(204);
+        return;
+      }
     }
 
     next();
@@ -49,6 +55,24 @@ export const createApp = (): Express => {
   });
 
   app.use('/api', apiRouter);
+
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      res.status(404).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 404,
+          message: 'Route not found',
+          data: [],
+          errors: ['Route not found'],
+        })
+      );
+      return;
+    }
+
+    next();
+  });
+
   app.use(errorHandler);
 
   return app;

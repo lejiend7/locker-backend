@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 import { User } from '@/database/entities/User.js';
-import { BaseRepository } from './BaseRepository.js';
+import { BaseRepository } from '@/database/repositories/BaseRepository.js';
 
 export class UserRepository extends BaseRepository<User> {
   constructor(repository: Repository<User>) {

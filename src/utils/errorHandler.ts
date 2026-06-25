@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { buildApiResponse } from '@/utils/response.js';
 
 export type AppError = Error & {
   statusCode?: number;
@@ -17,8 +18,13 @@ export const errorHandler = (err: AppError, req: Request, res: Response, _next: 
   const statusCode = err.statusCode ?? err.status ?? 500;
   const message = err.message || 'Internal server error';
 
-  res.status(statusCode).json({
-    success: false,
-    message,
-  });
+  res.status(statusCode).json(
+    buildApiResponse({
+      success: false,
+      statusCode,
+      message,
+      data: [],
+      errors: [message],
+    })
+  );
 };

@@ -9,9 +9,9 @@ import {
   JoinColumn,
   Unique,
 } from 'typeorm';
-import { Locker } from './Locker.js';
-import { User } from './User.js';
-import { Message } from './Message.js';
+import { Locker } from '@/database/entities/Locker.js';
+import { User } from '@/database/entities/User.js';
+import { Message } from '@/database/entities/Message.js';
 
 export type PackageSize = 'small' | 'medium' | 'large';
 export type DeliveryStatus = 'ASSIGNED_TO_AGENT' | 'READY_TO_PICK' | 'PICKED';
