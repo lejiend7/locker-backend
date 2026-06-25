@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Repository } from 'typeorm';
-import { User } from '../database/entities/User.js';
+import { User } from '@/database/entities/User.js';
 
 type AuthUser = {
   id: string;

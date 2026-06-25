@@ -1,5 +1,5 @@
 import { Repository } from 'typeorm';
-import { Message } from '../entities/Message.js';
+import { Message } from '@/database/entities/Message.js';
 import { BaseRepository } from './BaseRepository.js';
 
 export class MessageRepository extends BaseRepository<Message> {

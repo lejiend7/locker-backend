@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { AppDataSource } from '../database/data-source.js';
-import { User } from '../database/entities/User.js';
-import { AuthService } from '../services/authService.js';
-import { requireAuth } from '../middleware/authMiddleware.js';
-import { asyncHandler } from '../utils/errorHandler.js';
+import { AppDataSource } from '@/database/data-source.js';
+import { User } from '@/database/entities/User.js';
+import { AuthService } from '@/services/authService.js';
+import { requireAuth } from '@/middleware/authMiddleware.js';
+import { asyncHandler } from '@/utils/errorHandler.js';
 
 const router = Router();
 

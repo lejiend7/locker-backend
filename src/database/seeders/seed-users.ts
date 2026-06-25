@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import bcrypt from 'bcryptjs';
-import { AppDataSource } from '../data-source.js';
-import { User } from '../entities/User.js';
+import { AppDataSource } from '@/database/data-source.js';
+import { User } from '@/database/entities/User.js';
 
 async function seedUsers() {
   try {

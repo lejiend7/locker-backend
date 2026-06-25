@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { AppDataSource } from '../data-source.js';
-import { Station } from '../entities/Station.js';
-import { Locker } from '../entities/Locker.js';
+import { AppDataSource } from '@/database/data-source.js';
+import { Station } from '@/database/entities/Station.js';
+import { Locker } from '@/database/entities/Locker.js';
 
 type StationSeed = {
   name: string;
