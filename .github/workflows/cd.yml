@@ -1,0 +1,31 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+env:
+  AWS_REGION: ap-southeast-5
+
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+jobs:
+  cd:
+    name: CD
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # TODO: EC2 instance will pull the latest image from ECR and restart the container.
+    # Steps to implement:
+    #   1. Configure AWS credentials
+    #   2. SSH into EC2 (via SSM Session Manager or direct SSH)
+    #   3. Run: docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
+    #   4. Run: docker stop locker-backend && docker rm locker-backend
+    #   5. Run: docker run -d --name locker-backend ... $ECR_REGISTRY/$ECR_REPOSITORY:latest
+    steps:
+      - name: Placeholder — EC2 deployment not finalized
+        run: |
+          echo "CI passed. Image ready at: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          echo "TODO: trigger EC2 to pull and run the latest image."
