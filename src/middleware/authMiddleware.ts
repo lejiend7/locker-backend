@@ -5,6 +5,7 @@ export type JwtUser = {
   sub: string;
   email: string;
   name: string;
+  role: 'customer' | 'delivery_agent' | 'admin';
 };
 
 declare global {

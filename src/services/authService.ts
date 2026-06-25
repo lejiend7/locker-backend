@@ -7,6 +7,7 @@ type AuthUser = {
   id: string;
   email: string;
   name: string;
+  role: 'customer' | 'delivery_agent' | 'admin';
 };
 
 type AuthSuccess = {
@@ -32,7 +33,56 @@ export class AuthService {
     private readonly jwtExpiresIn: jwt.SignOptions['expiresIn'] = '7d'
   ) {}
 
-  async signup(input: { name?: string; email?: string; password?: string }): Promise<AuthResult> {
+  private isValidRole(role?: string): role is 'customer' | 'delivery_agent' {
+    return role === 'customer' || role === 'delivery_agent';
+  }
+
+  async signup(input: { name?: string; email?: string; password?: string; role?: string }): Promise<AuthResult> {
+    const name = input.name?.trim();
+    const email = input.email?.trim().toLowerCase();
+    const password = input.password;
+    const requestedRole = input.role?.trim().toLowerCase();
+
+    if (!name || !email || !password) {
+      return { success: false, message: 'name, email, and password are required' };
+    }
+
+    const existing = await this.userRepository.findOne({ where: { email } });
+    if (existing) {
+      return { success: false, message: 'Email address already registered' };
+    }
+
+    if (requestedRole && !this.isValidRole(requestedRole)) {
+      return { success: false, message: 'role must be customer or delivery_agent' };
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const role = requestedRole ?? 'customer';
+    const user = this.userRepository.create({ name, email, password: passwordHash, role });
+    const saved = await this.userRepository.save(user);
+
+    const accessToken = jwt.sign(
+      { sub: String(saved.id), email: saved.email, name: saved.name, role: saved.role },
+      this.jwtSecret,
+      { expiresIn: this.jwtExpiresIn }
+    );
+
+    return {
+      success: true,
+      message: 'Account created successfully',
+      data: {
+        accessToken,
+        user: {
+          id: String(saved.id),
+          email: saved.email,
+          name: saved.name,
+          role: saved.role,
+        },
+      },
+    };
+  }
+
+  async signupAdmin(input: { name?: string; email?: string; password?: string }): Promise<AuthResult> {
     const name = input.name?.trim();
     const email = input.email?.trim().toLowerCase();
     const password = input.password;
@@ -47,21 +97,26 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = this.userRepository.create({ name, email, password: passwordHash });
+    const user = this.userRepository.create({ name, email, password: passwordHash, role: 'admin' });
     const saved = await this.userRepository.save(user);
 
     const accessToken = jwt.sign(
-      { sub: String(saved.id), email: saved.email, name: saved.name },
+      { sub: String(saved.id), email: saved.email, name: saved.name, role: saved.role },
       this.jwtSecret,
       { expiresIn: this.jwtExpiresIn }
     );
 
     return {
       success: true,
-      message: 'Account created successfully',
+      message: 'Admin account created successfully',
       data: {
         accessToken,
-        user: { id: String(saved.id), email: saved.email, name: saved.name },
+        user: {
+          id: String(saved.id),
+          email: saved.email,
+          name: saved.name,
+          role: saved.role,
+        },
       },
     };
   }
@@ -85,7 +140,7 @@ export class AuthService {
     }
 
     const accessToken = jwt.sign(
-      { sub: String(user.id), email: user.email, name: user.name },
+      { sub: String(user.id), email: user.email, name: user.name, role: user.role },
       this.jwtSecret,
       { expiresIn: this.jwtExpiresIn }
     );
@@ -95,7 +150,7 @@ export class AuthService {
       message: 'Login successful',
       data: {
         accessToken,
-        user: { id: String(user.id), email: user.email, name: user.name },
+        user: { id: String(user.id), email: user.email, name: user.name, role: user.role },
       },
     };
   }

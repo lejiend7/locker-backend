@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class InitSmartLockerErd1687516800000 implements MigrationInterface {
   name = 'InitSmartLockerErd1687516800000';
