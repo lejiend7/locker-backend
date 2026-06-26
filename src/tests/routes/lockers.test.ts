@@ -9,7 +9,7 @@ const { mockCreate, mockFindAll, mockFindByStationId } = vi.hoisted(() => ({
   mockFindByStationId: vi.fn(),
 }));
 
-vi.mock('@/middleware/authMiddleware.js', () => ({
+vi.mock('@/middleware/authMiddleware.ts', () => ({
   authMiddleware: (req: any, _res: any, next: () => void) => {
     req.authUser = {
       sub: 'admin-user',
@@ -21,13 +21,13 @@ vi.mock('@/middleware/authMiddleware.js', () => ({
   },
 }));
 
-vi.mock('@/database/data-source.js', () => ({
+vi.mock('@/database/data-source.ts', () => ({
   AppDataSource: {
     getRepository: vi.fn(),
   },
 }));
 
-vi.mock('@/database/repositories/LockerRepository.js', () => ({
+vi.mock('@/database/repositories/LockerRepository.ts', () => ({
   LockerRepository: class {
     constructor() {
       this.create = mockCreate;
@@ -91,7 +91,15 @@ describe('lockers route unit tests', () => {
       success: true,
       statusCode: 201,
       message: 'Locker created successfully',
-      data: createdLocker,
+      data: {
+        id: 42,
+        stationId: 3,
+        size: 'small',
+        status: 'available',
+        label: 'A-01',
+        version: 1,
+        createdAt: '2026-06-26T00:00:00.000Z',
+      },
       errors: [],
     });
     expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({

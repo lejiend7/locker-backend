@@ -15,16 +15,19 @@ async function seedUsers() {
         name: 'Priya Sharma',
         email: 'priya@example.com',
         plainPassword: 'SecurePass1!',
+        role: 'customer' as const,
       },
       {
         name: 'Ahmad Hassan',
         email: 'ahmad@example.com',
         plainPassword: 'SecurePass2!',
+        role: 'delivery_agent' as const,
       },
       {
         name: 'Lejiend Test',
         email: 'lejiend@test.com',
         plainPassword: 'SecurePass3!',
+        role: 'admin' as const,
       },
     ];
 
@@ -37,12 +40,14 @@ async function seedUsers() {
           name: user.name,
           email: user.email,
           password: passwordHash,
+          role: user.role,
         });
         await userRepo.save(newUser);
         console.log(`Inserted user ${user.email}`);
       } else {
         existingUser.name = user.name;
         existingUser.password = passwordHash;
+        existingUser.role = user.role;
         await userRepo.save(existingUser);
         console.log(`Updated user ${user.email}`);
       }

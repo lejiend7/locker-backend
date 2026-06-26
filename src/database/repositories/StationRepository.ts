@@ -1,8 +1,9 @@
 import { Repository } from 'typeorm';
 import { Station } from '@/database/entities/Station.ts';
 import { BaseRepository } from '@/database/repositories/BaseRepository.ts';
+import { StationRepositoryInterface } from '@/database/repositories/interfaces/StationRepositoryInterface.ts';
 
-export class StationRepository extends BaseRepository<Station> {
+export class StationRepository extends BaseRepository<Station> implements StationRepositoryInterface {
   constructor(repository: Repository<Station>) {
     super(repository);
   }

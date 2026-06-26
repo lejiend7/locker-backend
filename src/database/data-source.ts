@@ -17,6 +17,6 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: false,
   entities: [Station, Locker, User, Package, Message],
-  migrations: ['src/database/migrations/*.ts'],
+  migrations: process.env.NODE_ENV === 'test' ? [] : ['src/database/migrations/*.ts'],
   migrationsTableName: 'migrations',
 });

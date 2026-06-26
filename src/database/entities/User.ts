@@ -23,8 +23,11 @@ export class User {
   @CreateDateColumn()
   created_at!: Date;
 
-  @OneToMany(() => Package, (pkg) => pkg.user)
+  @OneToMany(() => Package, (pkg) => pkg.customer)
   packages!: Package[];
+
+  @OneToMany(() => Package, (pkg) => pkg.agent)
+  assignedPackages!: Package[];
 
   @OneToMany(() => Message, (msg) => msg.user)
   messages!: Message[];

@@ -1,4 +1,4 @@
-import { BaseDto } from '@/dtos/BaseDto.ts';
+import { BaseDto } from '@/dtos/baseDto.ts';
 
 export type CreateLockerDtoInput = {
   size?: unknown;

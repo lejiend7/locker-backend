@@ -48,7 +48,7 @@ describe('lockers route integration', () => {
     expect(res.body.statusCode).toBe(201);
     expect(res.body.message).toBe('Locker created successfully');
     expect(res.body.data).toEqual(expect.objectContaining({
-      station_id: station.id,
+      stationId: station.id,
       size: 'small',
       label: 'Z-99',
       status: 'available',
@@ -84,7 +84,7 @@ describe('lockers route integration', () => {
     expect(res.body.message).toBe('Lockers fetched successfully');
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data).toEqual(expect.arrayContaining([
-      expect.objectContaining({ station_id: station.id, label: 'B-01' }),
+      expect.objectContaining({ stationId: station.id, label: 'B-01' }),
     ]));
   });
 });

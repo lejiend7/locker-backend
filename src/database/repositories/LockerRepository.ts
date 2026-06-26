@@ -1,8 +1,9 @@
 import { Repository } from 'typeorm';
 import { Locker } from '@/database/entities/Locker.ts';
 import { BaseRepository } from '@/database/repositories/BaseRepository.ts';
+import { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.ts';
 
-export class LockerRepository extends BaseRepository<Locker> {
+export class LockerRepository extends BaseRepository<Locker> implements LockerRepositoryInterface {
   constructor(repository: Repository<Locker>) {
     super(repository);
   }
@@ -20,6 +21,13 @@ export class LockerRepository extends BaseRepository<Locker> {
 
   async findAvailableByStationId(station_id: number): Promise<Locker[]> {
     return this.find({ station_id, status: 'available' } as any);
+  }
+
+  async findAvailableLockers(): Promise<Locker[]> {
+    return this.repository.find({
+      where: { status: 'available' } as any,
+      order: { id: 'DESC' } as any,
+    });
   }
 
   async updateStatus(id: number, status: 'available' | 'occupied'): Promise<Locker | null> {

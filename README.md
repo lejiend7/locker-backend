@@ -2,6 +2,25 @@
 
 A Node.js/Express backend for the SmartLocker package management system. It uses **TypeScript**, **Express**, **TypeORM**, **MySQL**, **JWT-based auth**, and **Vitest** to support a modular API with controllers, middleware, services, repositories, and tests.
 
+## 🎯 Assignment Focus: Architectural Patterns Implemented
+
+This backend is designed around a clean layered architecture and follows modern software design practices for assignment purposes:
+
+- **Unit and Integration Testing**: the project includes both unit tests for isolated logic and integration tests for real database and HTTP flows.
+- **Repository Pattern**: data access is encapsulated in repository classes, keeping business logic separate from database concerns.
+- **Interface-Based Design**: services and repositories expose contracts through interfaces, which improves flexibility and testability.
+- **SOLID Principles**: the codebase is structured to follow the Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, and Dependency Inversion principles.
+- **Dependency Injection / Dependency Inversion**: services and controllers depend on abstractions (interfaces) rather than hard-coding concrete implementations.
+- **Layered Separation of Concerns**: controllers handle HTTP flow, services handle business logic, and repositories handle persistence.
+
+### Patterns already implemented
+
+- Repository pattern for entities such as stations, lockers, users, packages, and messages.
+- Interface-based contracts for services and repositories.
+- Service abstractions for reusable business capability such as locker availability.
+- Dependency inversion through constructor-based dependencies and interface typing.
+- A modular controller-service-repository structure that is easier to extend and test.
+
 ## 📋 Table of Contents
 
 - [Tech Stack](#-tech-stack)
@@ -16,6 +35,7 @@ A Node.js/Express backend for the SmartLocker package management system. It uses
 - [Production](#-production)
 - [API Reference](#-api-reference)
 - [Architecture](#-architecture)
+- [Clean Route Map](#-clean-route-map)
 - [Request Lifecycle (End-to-End)](#-request-lifecycle-end-to-end)
 - [Next Steps](#-next-steps)
 
@@ -297,11 +317,11 @@ Full API specification is in [ERD_README.md](./ERD_README.md), including:
 
 This backend follows **SOLID** design:
 
-- **S**ingle Responsibility: Each repository handles one entity
-- **O**pen/Closed: Extend `BaseRepository` for new entities
-- **L**iskov Substitution: Repositories are interchangeable
-- **I**nterface Segregation: Each repository exposes only needed methods
-- **D**ependency Injection: Services will inject repos (ready for implementation)
+- **S**ingle Responsibility: each repository and service focuses on one clear responsibility.
+- **O**pen/Closed: the shared base repository can be extended for new entities without rewriting core CRUD behavior.
+- **L**iskov Substitution: repository implementations can be swapped behind their interfaces without changing consumers.
+- **I**nterface Segregation: services and repositories expose focused contracts rather than large, coupled interfaces.
+- **D**ependency Inversion: controllers and seeders consume interfaces and depend on abstractions instead of concrete implementations.
 
 ### Repository Pattern
 
@@ -333,9 +353,74 @@ const station = await customStationRepo.findByCity('Petaling Jaya');
 
 Foreign keys use `ON DELETE RESTRICT` and `ON UPDATE CASCADE` for data integrity.
 
+## 🧭 Clean Route Map
+
+The backend uses one centralized router in [src/routes/index.ts](src/routes/index.ts), mounted by [src/services/routeService.ts](src/services/routeService.ts) at both `/` and `/api` for flexible local and API-prefixed access.
+
+Current route layout:
+
+| Method | Path | Middleware | Controller |
+|---|---|---|---|
+| GET | / | guestMiddleware | landingController.index |
+| GET | /health | guestMiddleware | healthController.index |
+| POST | /auth/signup | guestMiddleware | authController.signup |
+| POST | /auth/signup/admin | guestMiddleware | authController.signupAdmin |
+| POST | /auth/login | guestMiddleware | authController.login |
+| GET | /auth/session | authMiddleware | authController.session |
+| GET | /stations | authMiddleware | stationController.list |
+| GET | /lockers | authMiddleware | lockerController.list |
+| POST | /lockers | authMiddleware | lockerController.create |
+
+Routing principles used:
+
+- One route registration file for predictable endpoint discovery.
+- Middleware is applied per route so access rules stay explicit.
+- Route mounting, API 404 fallback, and global error handling are centralized in RouteService.
+- Controllers remain thin and delegate business logic to services.
+
+### Route Code Sample
+
+Main router sample from `src/routes/index.ts`:
+
+```ts
+import { Router } from 'express';
+import { authController } from '@/controllers/authController.ts';
+import { healthController } from '@/controllers/healthController.ts';
+import { landingController } from '@/controllers/landingController.ts';
+import { stationController } from '@/controllers/stationController.ts';
+import { lockerController } from '@/controllers/lockerController.ts';
+import { authMiddleware } from '@/middleware/authMiddleware.ts';
+import { guestMiddleware } from '@/middleware/guestMiddleware.ts';
+
+const router = Router();
+
+router.get('/', guestMiddleware, landingController.index);
+router.get('/health', guestMiddleware, healthController.index);
+
+router.post('/auth/signup', guestMiddleware, authController.signup);
+router.post('/auth/signup/admin', guestMiddleware, authController.signupAdmin);
+router.post('/auth/login', guestMiddleware, authController.login);
+router.get('/auth/session', authMiddleware, authController.session);
+
+router.get('/stations', authMiddleware, stationController.list);
+router.get('/lockers', authMiddleware, lockerController.list);
+router.post('/lockers', authMiddleware, lockerController.create);
+
+export default router;
+```
+
+Route mounting sample from `src/services/routeService.ts`:
+
+```ts
+import router from '@/routes/index.ts';
+
+app.use('/', router);
+app.use('/api', router);
+```
+
 ### Request Lifecycle (End-to-End)
 
-Yes — the flow should start from the incoming HTTP request. A typical request follows this path through the backend:
+A typical request follows this path through the backend:
 
 ### Consistent API Response Shape
 
@@ -364,6 +449,30 @@ And for failures:
 ```
 
 This keeps the API predictable for frontend consumers and makes both successful and unsuccessful responses easy to handle consistently.
+
+The same helper also recursively converts database-style `snake_case` keys to `camelCase` before the response reaches the frontend. That means controllers and repositories can keep database naming conventions internally, while the API contract stays standardized for client code.
+
+Example:
+
+```json
+{
+  "locker_id": 12,
+  "customer_name": "Priya Sharma",
+  "assigned_at": "2026-06-26T08:00:00.000Z"
+}
+```
+
+becomes:
+
+```json
+{
+  "lockerId": 12,
+  "customerName": "Priya Sharma",
+  "assignedAt": "2026-06-26T08:00:00.000Z"
+}
+```
+
+This standardization is intentional so the frontend can work with one consistent naming style across all API responses.
 
 
 1. **Client sends an HTTP request** to the Express server.

@@ -15,7 +15,8 @@
     "db:migrate:revert": "tsx node_modules/.bin/typeorm migration:revert -d src/database/data-source.ts",
     "db:seed": "tsx src/database/seeders/seed-stations.ts",
     "db:seed:users": "tsx src/database/seeders/seed-users.ts",
-    "db:seed:stations": "tsx src/database/seeders/seed-stations.ts"
+    "db:seed:stations": "tsx src/database/seeders/seed-stations.ts",
+    "db:seed:packages": "tsx src/database/seeders/seed-packages.ts"
   },
   "repository": {
     "type": "git",
