@@ -35,6 +35,7 @@ This backend is designed around a clean layered architecture and follows modern 
 - [Production](#-production)
 - [API Reference](#-api-reference)
 - [Architecture](#-architecture)
+- [Clean Route Map](#-clean-route-map)
 - [Request Lifecycle (End-to-End)](#-request-lifecycle-end-to-end)
 - [Next Steps](#-next-steps)
 
@@ -352,9 +353,74 @@ const station = await customStationRepo.findByCity('Petaling Jaya');
 
 Foreign keys use `ON DELETE RESTRICT` and `ON UPDATE CASCADE` for data integrity.
 
+## 🧭 Clean Route Map
+
+The backend uses one centralized router in [src/routes/index.ts](src/routes/index.ts), mounted by [src/services/routeService.ts](src/services/routeService.ts) at both `/` and `/api` for flexible local and API-prefixed access.
+
+Current route layout:
+
+| Method | Path | Middleware | Controller |
+|---|---|---|---|
+| GET | / | guestMiddleware | landingController.index |
+| GET | /health | guestMiddleware | healthController.index |
+| POST | /auth/signup | guestMiddleware | authController.signup |
+| POST | /auth/signup/admin | guestMiddleware | authController.signupAdmin |
+| POST | /auth/login | guestMiddleware | authController.login |
+| GET | /auth/session | authMiddleware | authController.session |
+| GET | /stations | authMiddleware | stationController.list |
+| GET | /lockers | authMiddleware | lockerController.list |
+| POST | /lockers | authMiddleware | lockerController.create |
+
+Routing principles used:
+
+- One route registration file for predictable endpoint discovery.
+- Middleware is applied per route so access rules stay explicit.
+- Route mounting, API 404 fallback, and global error handling are centralized in RouteService.
+- Controllers remain thin and delegate business logic to services.
+
+### Route Code Sample
+
+Main router sample from `src/routes/index.ts`:
+
+```ts
+import { Router } from 'express';
+import { authController } from '@/controllers/authController.ts';
+import { healthController } from '@/controllers/healthController.ts';
+import { landingController } from '@/controllers/landingController.ts';
+import { stationController } from '@/controllers/stationController.ts';
+import { lockerController } from '@/controllers/lockerController.ts';
+import { authMiddleware } from '@/middleware/authMiddleware.ts';
+import { guestMiddleware } from '@/middleware/guestMiddleware.ts';
+
+const router = Router();
+
+router.get('/', guestMiddleware, landingController.index);
+router.get('/health', guestMiddleware, healthController.index);
+
+router.post('/auth/signup', guestMiddleware, authController.signup);
+router.post('/auth/signup/admin', guestMiddleware, authController.signupAdmin);
+router.post('/auth/login', guestMiddleware, authController.login);
+router.get('/auth/session', authMiddleware, authController.session);
+
+router.get('/stations', authMiddleware, stationController.list);
+router.get('/lockers', authMiddleware, lockerController.list);
+router.post('/lockers', authMiddleware, lockerController.create);
+
+export default router;
+```
+
+Route mounting sample from `src/services/routeService.ts`:
+
+```ts
+import router from '@/routes/index.ts';
+
+app.use('/', router);
+app.use('/api', router);
+```
+
 ### Request Lifecycle (End-to-End)
 
-Yes — the flow should start from the incoming HTTP request. A typical request follows this path through the backend:
+A typical request follows this path through the backend:
 
 ### Consistent API Response Shape
 

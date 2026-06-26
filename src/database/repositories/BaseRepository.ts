@@ -27,10 +27,10 @@ export abstract class BaseRepository<T extends ObjectLiteral> {
   }
 
   async find(options: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<T[]> {
-    return this.repository.find({ where: options });
+    return this.repository.find({ where: options } as any);
   }
 
   async findOne(options: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<T | null> {
-    return this.repository.findOne({ where: options });
+    return this.repository.findOne(options as any);
   }
 }

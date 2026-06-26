@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CreateLockerDto } from '@/dtos/CreateLockerDto.ts';
-import { LoginDto } from '@/dtos/LoginDto.ts';
-import { SignupAdminDto } from '@/dtos/SignupAdminDto.ts';
-import { SignupDto } from '@/dtos/SignupDto.ts';
+import { CreateLockerDto } from '@/dtos/createLockerDto.js';
+import { LoginDto } from '@/dtos/loginDto.js';
+import { SignupAdminDto } from '@/dtos/signupAdminDto.js';
+import { SignupDto } from '@/dtos/signupDto.js';
 
 describe('request DTO validation', () => {
   it('rejects incomplete signup payloads', () => {

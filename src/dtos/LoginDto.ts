@@ -1,4 +1,4 @@
-import { BaseDto } from '@/dtos/BaseDto.ts';
+import { BaseDto } from '@/dtos/baseDto.js';
 
 export type LoginDtoInput = {
   email?: unknown;

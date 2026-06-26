@@ -4,7 +4,13 @@ import { AppDataSource } from '@/database/data-source.ts';
 import { Locker } from '@/database/entities/Locker.ts';
 import { Package } from '@/database/entities/Package.ts';
 import { User } from '@/database/entities/User.ts';
+import { LockerRepository } from '@/database/repositories/LockerRepository.ts';
+import { PackageRepository } from '@/database/repositories/PackageRepository.ts';
+import { UserRepository } from '@/database/repositories/UserRepository.ts';
 import { LockerAvailabilityServiceInterface } from '@/services/interfaces/LockerAvailabilityServiceInterface.ts';
+import { PackageCustomerSelectionServiceInterface } from '@/services/interfaces/PackageCustomerSelectionServiceInterface.ts';
+import { LockerService } from '@/services/lockerService.ts';
+import { PackageService } from '@/services/packageService.ts';
 
 export async function findAvailableLockerForPackageSeed({
   lockerService,
@@ -18,6 +24,14 @@ export async function findAvailableLockerForPackageSeed({
   }
 
   return availableLockers[0];
+}
+
+export async function findEligibleCustomerForPackageSeed({
+  customerSelectionService,
+}: {
+  customerSelectionService: PackageCustomerSelectionServiceInterface;
+}) {
+  return customerSelectionService.getEligibleCustomer();
 }
 
 export function buildPackageSeedData({
@@ -53,6 +67,46 @@ export function buildPackageSeedData({
   };
 }
 
+export function buildPackageSeedPayloads({
+  customerUsers,
+  agentUsers,
+  lockers,
+  count,
+}: {
+  customerUsers: Array<Pick<User, 'id' | 'role'>>;
+  agentUsers: Array<Pick<User, 'id' | 'role'>>;
+  lockers: Array<Pick<Locker, 'id'>>;
+  count: number;
+}) {
+  if (agentUsers.length < 2) {
+    throw new Error('At least two delivery agents are required for package seeding.');
+  }
+
+  const payloads = [] as Array<ReturnType<typeof buildPackageSeedData>>;
+  const eligibleCustomers = customerUsers.filter((user) => user.role === 'customer');
+
+  if (eligibleCustomers.length === 0) {
+    throw new Error('At least one customer user is required for package seeding.');
+  }
+
+  for (let index = 0; index < count; index += 1) {
+    const customerUser = eligibleCustomers[index % eligibleCustomers.length];
+    const agentUser = agentUsers[index % agentUsers.length];
+    const locker = lockers[index % lockers.length];
+
+    payloads.push(
+      buildPackageSeedData({
+        customerUser,
+        agentUser,
+        locker,
+        customerName: customerUser.id === 1 ? 'Priya Sharma' : `Customer ${customerUser.id}`,
+      }),
+    );
+  }
+
+  return payloads;
+}
+
 async function seedPackages() {
   try {
     await AppDataSource.initialize();
@@ -62,48 +116,36 @@ async function seedPackages() {
     const userRepo = AppDataSource.getRepository(User);
     const lockerRepo = AppDataSource.getRepository(Locker);
 
-    const customerUser = await userRepo.findOne({
-      where: { email: 'priya@example.com', role: 'customer' } as any,
+    const agentUsers = await userRepo.find({
+      where: { role: 'delivery_agent' } as any,
     });
-    const agentUser = await userRepo.findOne({
-      where: { email: 'ahmad@example.com', role: 'delivery_agent' } as any,
-    });
-    const lockerService = new LockerAvailabilityService({
-      lockerRepository: new (require('@/database/repositories/LockerRepository.ts').LockerRepository)(lockerRepo),
-    } as any);
-
-    const locker = await findAvailableLockerForPackageSeed({
-      lockerService,
-    });
-
-    if (!customerUser || !agentUser || !locker) {
-      throw new Error('Required customer user, agent user, or locker not found. Seed users and stations first.');
-    }
-
-    const existingPackage = await packageRepo.findOne({
-      where: {
-        customer_id: customerUser.id,
-        agent_id: agentUser.id,
-        locker_id: locker.id,
-        customer_name: 'Priya Sharma',
-      } as any,
-    });
-
-    if (existingPackage) {
-      console.log('Package already exists for Priya Sharma and locker L-003');
-      await AppDataSource.destroy();
-      process.exit(0);
-    }
-
-    const packageRecord = packageRepo.create(
-      buildPackageSeedData({
-        customerUser,
-        agentUser,
-        locker,
-      }),
+    const lockerService = new LockerService(new LockerRepository(lockerRepo));
+    const customerSelectionService = new PackageService(
+      new UserRepository(userRepo),
+      new PackageRepository(packageRepo)
     );
 
-    await packageRepo.save(packageRecord);
+    const customerUsers = await userRepo.find({ where: { role: 'customer' } as any });
+
+    if (agentUsers.length < 2) {
+      throw new Error('At least two delivery agents are required for package seeding.');
+    }
+
+    const availableLockers = await lockerService.getAvailableLockers();
+
+    if (customerUsers.length === 0 || availableLockers.length === 0) {
+      throw new Error('Required customer users or available lockers were not found. Seed users and stations first.');
+    }
+
+    const packagePayloads = buildPackageSeedPayloads({
+      customerUsers,
+      agentUsers: agentUsers.slice(0, 2),
+      lockers: availableLockers,
+      count: 10,
+    });
+
+    const packageRecords = packageRepo.create(packagePayloads);
+    await packageRepo.save(packageRecords);
 
     console.log('Package seeding completed');
     await AppDataSource.destroy();
