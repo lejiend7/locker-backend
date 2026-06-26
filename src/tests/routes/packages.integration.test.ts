@@ -34,12 +34,12 @@ describe('packages route integration', () => {
       throw new Error('JWT_SECRET must be defined in the environment');
     }
 
-    ({ createApp } = await import('@/app.js'));
-    ({ AppDataSource } = await import('@/database/data-source.js'));
-    ({ Station } = await import('@/database/entities/Station.js'));
-    ({ Locker } = await import('@/database/entities/Locker.js'));
-    ({ Package } = await import('@/database/entities/Package.js'));
-    ({ User } = await import('@/database/entities/User.js'));
+    ({ createApp } = await import('@/app.ts'));
+    ({ AppDataSource } = await import('@/database/data-source.ts'));
+    ({ Station } = await import('@/database/entities/Station.ts'));
+    ({ Locker } = await import('@/database/entities/Locker.ts'));
+    ({ Package } = await import('@/database/entities/Package.ts'));
+    ({ User } = await import('@/database/entities/User.ts'));
 
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();

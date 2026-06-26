@@ -1,7 +1,7 @@
 import { Repository } from 'typeorm';
 import { Locker } from '@/database/entities/Locker.ts';
 import { BaseRepository } from '@/database/repositories/BaseRepository.ts';
-import { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.js';
+import { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.ts';
 
 export class LockerRepository extends BaseRepository<Locker> implements LockerRepositoryInterface {
   constructor(repository: Repository<Locker>) {

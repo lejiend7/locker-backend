@@ -2,7 +2,7 @@ import { type Request, type Response } from 'express';
 import { AppDataSource } from '@/database/data-source.ts';
 import { Locker } from '@/database/entities/Locker.ts';
 import { LockerRepository } from '@/database/repositories/LockerRepository.ts';
-import { CreateLockerDto } from '@/dtos/createLockerDto.js';
+import { CreateLockerDto } from '@/dtos/createLockerDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 

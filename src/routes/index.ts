@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { authController } from '@/controllers/authController.js';
-import { healthController } from '@/controllers/healthController.js';
-import { landingController } from '@/controllers/landingController.js';
-import { stationController } from '@/controllers/stationController.js';
-import { lockerController } from '@/controllers/lockerController.js';
-import { packageController } from '@/controllers/packageController.js';
-import { authMiddleware } from '@/middleware/authMiddleware.js';
-import { guestMiddleware } from '@/middleware/guestMiddleware.js';
+import { authController } from '@/controllers/authController.ts';
+import { healthController } from '@/controllers/healthController.ts';
+import { landingController } from '@/controllers/landingController.ts';
+import { stationController } from '@/controllers/stationController.ts';
+import { lockerController } from '@/controllers/lockerController.ts';
+import { packageController } from '@/controllers/packageController.ts';
+import { authMiddleware } from '@/middleware/authMiddleware.ts';
+import { guestMiddleware } from '@/middleware/guestMiddleware.ts';
 
 const router = Router();
 router.get('/', guestMiddleware, landingController.index);

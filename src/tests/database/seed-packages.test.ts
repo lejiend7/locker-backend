@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildPackageSeedData, buildPackageSeedPayloads, findAvailableLockerForPackageSeed } from '@/database/seeders/seed-packages.js';
-import { BaseRepository } from '@/database/repositories/BaseRepository.js';
-import { LockerAvailabilityServiceInterface } from '@/services/interfaces/LockerAvailabilityServiceInterface.js';
-import { PackageServiceInterface } from '@/services/interfaces/PackageServiceInterface.js';
-import { PackageService } from '@/services/packageService.js';
+import { buildPackageSeedData, buildPackageSeedPayloads, findAvailableLockerForPackageSeed } from '@/database/seeders/seed-packages.ts';
+import { BaseRepository } from '@/database/repositories/BaseRepository.ts';
+import { LockerAvailabilityServiceInterface } from '@/services/interfaces/LockerAvailabilityServiceInterface.ts';
+import { PackageServiceInterface } from '@/services/interfaces/PackageServiceInterface.ts';
+import { PackageService } from '@/services/packageService.ts';
 
 const packageServiceMock: PackageServiceInterface = {
   getEligibleCustomer: async () => null,

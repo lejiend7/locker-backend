@@ -1,16 +1,16 @@
 import 'reflect-metadata';
 import { pathToFileURL } from 'node:url';
-import { AppDataSource } from '@/database/data-source.js';
-import { Locker } from '@/database/entities/Locker.js';
-import { Package } from '@/database/entities/Package.js';
-import { User } from '@/database/entities/User.js';
-import { LockerRepository } from '@/database/repositories/LockerRepository.js';
-import { PackageRepository } from '@/database/repositories/PackageRepository.js';
-import { UserRepository } from '@/database/repositories/UserRepository.js';
-import { LockerAvailabilityServiceInterface } from '@/services/interfaces/LockerAvailabilityServiceInterface.js';
-import { PackageServiceInterface } from '@/services/interfaces/PackageServiceInterface.js';
-import { LockerService } from '@/services/lockerService.js';
-import { PackageService } from '@/services/packageService.js';
+import { AppDataSource } from '@/database/data-source.ts';
+import { Locker } from '@/database/entities/Locker.ts';
+import { Package } from '@/database/entities/Package.ts';
+import { User } from '@/database/entities/User.ts';
+import { LockerRepository } from '@/database/repositories/LockerRepository.ts';
+import { PackageRepository } from '@/database/repositories/PackageRepository.ts';
+import { UserRepository } from '@/database/repositories/UserRepository.ts';
+import { LockerAvailabilityServiceInterface } from '@/services/interfaces/LockerAvailabilityServiceInterface.ts';
+import { PackageServiceInterface } from '@/services/interfaces/PackageServiceInterface.ts';
+import { LockerService } from '@/services/lockerService.ts';
+import { PackageService } from '@/services/packageService.ts';
 
 function buildPackageCode(sequence: number): string {
   return `PKG-${String(sequence).padStart(8, '0')}`;

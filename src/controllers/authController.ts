@@ -3,9 +3,9 @@ import { AppDataSource } from '@/database/data-source.ts';
 import { User } from '@/database/entities/User.ts';
 import { AuthService } from '@/services/authService.ts';
 import { AuthServiceInterface } from '@/services/interfaces/AuthServiceInterface.ts';
-import { LoginDto } from '@/dtos/loginDto.js';
-import { SignupAdminDto } from '@/dtos/signupAdminDto.js';
-import { SignupDto } from '@/dtos/signupDto.js';
+import { LoginDto } from '@/dtos/loginDto.ts';
+import { SignupAdminDto } from '@/dtos/signupAdminDto.ts';
+import { SignupDto } from '@/dtos/signupDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
