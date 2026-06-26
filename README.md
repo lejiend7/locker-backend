@@ -450,6 +450,30 @@ And for failures:
 
 This keeps the API predictable for frontend consumers and makes both successful and unsuccessful responses easy to handle consistently.
 
+The same helper also recursively converts database-style `snake_case` keys to `camelCase` before the response reaches the frontend. That means controllers and repositories can keep database naming conventions internally, while the API contract stays standardized for client code.
+
+Example:
+
+```json
+{
+  "locker_id": 12,
+  "customer_name": "Priya Sharma",
+  "assigned_at": "2026-06-26T08:00:00.000Z"
+}
+```
+
+becomes:
+
+```json
+{
+  "lockerId": 12,
+  "customerName": "Priya Sharma",
+  "assignedAt": "2026-06-26T08:00:00.000Z"
+}
+```
+
+This standardization is intentional so the frontend can work with one consistent naming style across all API responses.
+
 
 1. **Client sends an HTTP request** to the Express server.
 2. The app bootstrap in [src/app.ts](src/app.ts) initializes the Express app and applies core middleware such as JSON parsing and static file serving.
