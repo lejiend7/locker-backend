@@ -2,31 +2,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Repository } from 'typeorm';
 import { User } from '@/database/entities/User.ts';
+import { AuthServiceInterface, AuthResult } from '@/services/interfaces/AuthServiceInterface.ts';
 
-type AuthUser = {
-  id: string;
-  email: string;
-  name: string;
-  role: 'customer' | 'delivery_agent' | 'admin';
-};
-
-type AuthSuccess = {
-  success: true;
-  message: string;
-  data: {
-    accessToken: string;
-    user: AuthUser;
-  };
-};
-
-type AuthFailure = {
-  success: false;
-  message: string;
-};
-
-export type AuthResult = AuthSuccess | AuthFailure;
-
-export class AuthService {
+export class AuthService implements AuthServiceInterface {
   constructor(
     private readonly userRepository: Repository<User>,
     private readonly jwtSecret: string,

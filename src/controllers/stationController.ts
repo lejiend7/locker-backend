@@ -2,10 +2,11 @@ import { type Request, type Response } from 'express';
 import { AppDataSource } from '@/database/data-source.ts';
 import { Station } from '@/database/entities/Station.ts';
 import { StationRepository } from '@/database/repositories/StationRepository.ts';
+import { StationRepositoryInterface } from '@/database/repositories/interfaces/StationRepositoryInterface.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
-const stationRepository = new StationRepository(AppDataSource.getRepository(Station));
+const stationRepository: StationRepositoryInterface = new StationRepository(AppDataSource.getRepository(Station));
 
 export class StationController {
   list = asyncHandler((req: Request, res: Response) => this.handleList(req, res));

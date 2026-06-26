@@ -1,14 +1,15 @@
 import { Repository } from 'typeorm';
 import { Package } from '@/database/entities/Package.ts';
 import { BaseRepository } from '@/database/repositories/BaseRepository.ts';
+import { PackageRepositoryInterface } from '@/database/repositories/interfaces/PackageRepositoryInterface.ts';
 
-export class PackageRepository extends BaseRepository<Package> {
+export class PackageRepository extends BaseRepository<Package> implements PackageRepositoryInterface {
   constructor(repository: Repository<Package>) {
     super(repository);
   }
 
-  async findByUserId(user_id: number): Promise<Package[]> {
-    return this.find({ user_id } as any);
+  async findByCustomerId(customer_id: number): Promise<Package[]> {
+    return this.find({ customer_id } as any);
   }
 
   async findByLockerId(locker_id: number): Promise<Package | null> {

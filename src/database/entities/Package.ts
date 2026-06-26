@@ -18,7 +18,8 @@ export type DeliveryStatus = 'ASSIGNED_TO_AGENT' | 'READY_TO_PICK' | 'PICKED';
 
 @Entity('packages')
 @Index('idx_packages_locker_id', ['locker_id'])
-@Index('idx_packages_user_id', ['user_id'])
+@Index('idx_packages_customer_id', ['customer_id'])
+@Index('idx_packages_agent_id', ['agent_id'])
 @Index('idx_packages_delivery_status', ['delivery_status'])
 @Unique(['pickup_code'])
 export class Package {
@@ -29,7 +30,10 @@ export class Package {
   locker_id!: number;
 
   @Column({ type: 'int' })
-  user_id!: number;
+  customer_id!: number;
+
+  @Column({ type: 'int', nullable: true })
+  agent_id!: number | null;
 
   @Column({ type: 'enum', enum: ['small', 'medium', 'large'] })
   package_size!: PackageSize;
@@ -72,8 +76,16 @@ export class Package {
     onDelete: 'RESTRICT',
     onUpdate: 'CASCADE',
   })
-  @JoinColumn({ name: 'user_id' })
-  user!: User;
+  @JoinColumn({ name: 'customer_id' })
+  customer!: User;
+
+  @ManyToOne(() => User, (user) => user.assignedPackages, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'agent_id' })
+  agent!: User | null;
 
   @OneToMany(() => Message, (msg) => msg.package)
   messages!: Message[];

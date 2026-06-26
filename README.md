@@ -2,6 +2,25 @@
 
 A Node.js/Express backend for the SmartLocker package management system. It uses **TypeScript**, **Express**, **TypeORM**, **MySQL**, **JWT-based auth**, and **Vitest** to support a modular API with controllers, middleware, services, repositories, and tests.
 
+## 🎯 Assignment Focus: Architectural Patterns Implemented
+
+This backend is designed around a clean layered architecture and follows modern software design practices for assignment purposes:
+
+- **Unit and Integration Testing**: the project includes both unit tests for isolated logic and integration tests for real database and HTTP flows.
+- **Repository Pattern**: data access is encapsulated in repository classes, keeping business logic separate from database concerns.
+- **Interface-Based Design**: services and repositories expose contracts through interfaces, which improves flexibility and testability.
+- **SOLID Principles**: the codebase is structured to follow the Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, and Dependency Inversion principles.
+- **Dependency Injection / Dependency Inversion**: services and controllers depend on abstractions (interfaces) rather than hard-coding concrete implementations.
+- **Layered Separation of Concerns**: controllers handle HTTP flow, services handle business logic, and repositories handle persistence.
+
+### Patterns already implemented
+
+- Repository pattern for entities such as stations, lockers, users, packages, and messages.
+- Interface-based contracts for services and repositories.
+- Service abstractions for reusable business capability such as locker availability.
+- Dependency inversion through constructor-based dependencies and interface typing.
+- A modular controller-service-repository structure that is easier to extend and test.
+
 ## 📋 Table of Contents
 
 - [Tech Stack](#-tech-stack)
@@ -297,11 +316,11 @@ Full API specification is in [ERD_README.md](./ERD_README.md), including:
 
 This backend follows **SOLID** design:
 
-- **S**ingle Responsibility: Each repository handles one entity
-- **O**pen/Closed: Extend `BaseRepository` for new entities
-- **L**iskov Substitution: Repositories are interchangeable
-- **I**nterface Segregation: Each repository exposes only needed methods
-- **D**ependency Injection: Services will inject repos (ready for implementation)
+- **S**ingle Responsibility: each repository and service focuses on one clear responsibility.
+- **O**pen/Closed: the shared base repository can be extended for new entities without rewriting core CRUD behavior.
+- **L**iskov Substitution: repository implementations can be swapped behind their interfaces without changing consumers.
+- **I**nterface Segregation: services and repositories expose focused contracts rather than large, coupled interfaces.
+- **D**ependency Inversion: controllers and seeders consume interfaces and depend on abstractions instead of concrete implementations.
 
 ### Repository Pattern
 

@@ -2,6 +2,7 @@ import { type Request, type Response } from 'express';
 import { AppDataSource } from '@/database/data-source.ts';
 import { User } from '@/database/entities/User.ts';
 import { AuthService } from '@/services/authService.ts';
+import { AuthServiceInterface } from '@/services/interfaces/AuthServiceInterface.ts';
 import { LoginDto } from '@/dtos/LoginDto.ts';
 import { SignupAdminDto } from '@/dtos/SignupAdminDto.ts';
 import { SignupDto } from '@/dtos/SignupDto.ts';
@@ -9,7 +10,7 @@ import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
 const jwtSecret = process.env.JWT_SECRET || '';
-const authService = new AuthService(AppDataSource.getRepository(User), jwtSecret);
+const authService: AuthServiceInterface = new AuthService(AppDataSource.getRepository(User), jwtSecret);
 
 export class AuthController {
   signup = asyncHandler((req: Request, res: Response) => this.handleSignup(req, res));
