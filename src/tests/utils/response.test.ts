@@ -30,4 +30,15 @@ describe('buildApiResponse', () => {
     expect(response.errors).toEqual(['Admin access required']);
     expect(response.data).toEqual([]);
   });
+
+  it('converts database-style keys to camelCase throughout response data', () => {
+    const response = buildApiResponse({
+      success: true,
+      statusCode: 200,
+      message: 'Package fetched successfully',
+      data: [{ package_size: 'medium', locker: { station_id: 3 } }],
+    });
+
+    expect(response.data).toEqual([{ packageSize: 'medium', locker: { stationId: 3 } }]);
+  });
 });

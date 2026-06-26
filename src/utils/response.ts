@@ -2,9 +2,30 @@ export type ApiResponse<T> = {
   success: boolean;
   statusCode: number;
   message: string;
-  data: T[];
+  data: T | T[];
   errors: string[];
 };
+
+function toCamelCase(key: string): string {
+  return key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
+}
+
+function camelCaseResponseData(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(camelCaseResponseData);
+  }
+
+  if (value instanceof Date || value === null || typeof value !== 'object') {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nestedValue]) => [
+      toCamelCase(key),
+      camelCaseResponseData(nestedValue),
+    ])
+  );
+}
 
 export function buildApiResponse<T>(options: {
   success: boolean;
@@ -18,7 +39,7 @@ export function buildApiResponse<T>(options: {
       return [] as T[];
     }
 
-    return options.data;
+    return camelCaseResponseData(options.data) as T | T[];
   })();
 
   const normalizedErrors = (() => {

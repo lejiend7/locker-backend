@@ -91,7 +91,15 @@ describe('lockers route unit tests', () => {
       success: true,
       statusCode: 201,
       message: 'Locker created successfully',
-      data: createdLocker,
+      data: {
+        id: 42,
+        stationId: 3,
+        size: 'small',
+        status: 'available',
+        label: 'A-01',
+        version: 1,
+        createdAt: '2026-06-26T00:00:00.000Z',
+      },
       errors: [],
     });
     expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({

@@ -17,6 +17,7 @@ export type PackageSize = 'small' | 'medium' | 'large';
 export type DeliveryStatus = 'ASSIGNED_TO_AGENT' | 'READY_TO_PICK' | 'PICKED';
 
 @Entity('packages')
+@Unique(['package_code'])
 @Index('idx_packages_locker_id', ['locker_id'])
 @Index('idx_packages_customer_id', ['customer_id'])
 @Index('idx_packages_agent_id', ['agent_id'])
@@ -26,8 +27,11 @@ export class Package {
   @PrimaryGeneratedColumn({ type: 'int' })
   id!: number;
 
-  @Column({ type: 'int' })
-  locker_id!: number;
+  @Column({ type: 'varchar', length: 191 })
+  package_code!: string;
+
+  @Column({ type: 'int', nullable: true })
+  locker_id!: number | null;
 
   @Column({ type: 'int' })
   customer_id!: number;
@@ -66,11 +70,12 @@ export class Package {
   created_at!: Date;
 
   @ManyToOne(() => Locker, (locker) => locker.packages, {
+    nullable: true,
     onDelete: 'RESTRICT',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'locker_id' })
-  locker!: Locker;
+  locker!: Locker | null;
 
   @ManyToOne(() => User, (user) => user.packages, {
     onDelete: 'RESTRICT',

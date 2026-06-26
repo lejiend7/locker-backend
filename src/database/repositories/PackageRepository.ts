@@ -32,4 +32,14 @@ export class PackageRepository extends BaseRepository<Package> implements Packag
       where: { locker_id, delivery_status: 'READY_TO_PICK' } as any,
     });
   }
+
+  async listByAgent(agent_id: number): Promise<Package[]> {
+    return this.repository.find({
+      where: {
+        agent_id,
+      } as any,
+      order: { assigned_at: 'ASC' } as any,
+      relations: ['locker', 'locker.station', 'customer', 'agent'],
+    });
+  }
 }
