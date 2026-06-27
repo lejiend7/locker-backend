@@ -95,7 +95,7 @@ describe('buildPackageSeedData', () => {
     expect(locker.id).toBe(21);
   });
 
-  it('passes through findOne options without wrapping them in an extra where object', async () => {
+  it('normalizes plain findOne conditions into a where object', async () => {
     const fakeRepository = {
       findOne: vi.fn().mockResolvedValue(null),
     } as any;
@@ -105,7 +105,7 @@ describe('buildPackageSeedData', () => {
     const repo = new TestRepository(fakeRepository);
     await repo.findOne({ id: 7 } as any);
 
-    expect(fakeRepository.findOne).toHaveBeenCalledWith({ id: 7 });
+    expect(fakeRepository.findOne).toHaveBeenCalledWith({ where: { id: 7 } });
   });
 
   it('distributes a package batch evenly across two agents', () => {

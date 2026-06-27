@@ -1,12 +1,11 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Repository } from 'typeorm';
-import { User } from '@/database/entities/User.ts';
 import { AuthServiceInterface, AuthResult } from '@/services/interfaces/AuthServiceInterface.ts';
+import { UserRepositoryInterface } from '@/database/repositories/interfaces/UserRepositoryInterface.ts';
 
 export class AuthService implements AuthServiceInterface {
   constructor(
-    private readonly userRepository: Repository<User>,
+    private readonly userRepository: UserRepositoryInterface,
     private readonly jwtSecret: string,
     private readonly jwtExpiresIn: jwt.SignOptions['expiresIn'] = '7d'
   ) {}
@@ -25,7 +24,7 @@ export class AuthService implements AuthServiceInterface {
       return { success: false, message: 'name, email, and password are required' };
     }
 
-    const existing = await this.userRepository.findOne({ where: { email } });
+    const existing = await this.userRepository.findByEmail(email);
     if (existing) {
       return { success: false, message: 'Email address already registered' };
     }
@@ -36,8 +35,7 @@ export class AuthService implements AuthServiceInterface {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const role = requestedRole ?? 'customer';
-    const user = this.userRepository.create({ name, email, password: passwordHash, role });
-    const saved = await this.userRepository.save(user);
+    const saved = await this.userRepository.create({ name, email, password: passwordHash, role });
 
     const accessToken = jwt.sign(
       { sub: String(saved.id), email: saved.email, name: saved.name, role: saved.role },
@@ -69,14 +67,13 @@ export class AuthService implements AuthServiceInterface {
       return { success: false, message: 'name, email, and password are required' };
     }
 
-    const existing = await this.userRepository.findOne({ where: { email } });
+    const existing = await this.userRepository.findByEmail(email);
     if (existing) {
       return { success: false, message: 'Email address already registered' };
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = this.userRepository.create({ name, email, password: passwordHash, role: 'admin' });
-    const saved = await this.userRepository.save(user);
+    const saved = await this.userRepository.create({ name, email, password: passwordHash, role: 'admin' });
 
     const accessToken = jwt.sign(
       { sub: String(saved.id), email: saved.email, name: saved.name, role: saved.role },
@@ -107,7 +104,7 @@ export class AuthService implements AuthServiceInterface {
       return { success: false, message: 'email and password are required' };
     }
 
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.userRepository.findByEmail(email);
     if (!user) {
       return { success: false, message: 'Invalid email or password' };
     }

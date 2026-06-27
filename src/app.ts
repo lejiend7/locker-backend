@@ -3,7 +3,7 @@ import express, { type Express } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { corsMiddleware } from '@/middleware/corsMiddleware.ts';
-import router from '@/routes/index.ts';
+import router from '@/routes/route.ts';
 import { routeService } from '@/services/routeService.ts';
 
 const __filename = fileURLToPath(import.meta.url);

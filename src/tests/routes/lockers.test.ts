@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import apiRouter from '@/routes/index.ts';
+import apiRouter from '@/routes/route.ts';
 
 const { mockCreate, mockFindAll, mockFindByStationId } = vi.hoisted(() => ({
   mockCreate: vi.fn(),

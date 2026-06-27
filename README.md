@@ -359,7 +359,7 @@ Foreign keys use `ON DELETE RESTRICT` and `ON UPDATE CASCADE` for data integrity
 
 ## 🧭 Clean Route Map
 
-The backend uses one centralized router in [src/routes/index.ts](src/routes/index.ts). Route registration is handled by [src/services/routeService.ts](src/services/routeService.ts), which supports role-aware chaining with `.role([...])` and delegates authorization checks to [src/services/roleService.ts](src/services/roleService.ts).
+The backend uses one centralized router in [src/routes/route.ts](src/routes/route.ts). Route registration is handled by [src/services/routeService.ts](src/services/routeService.ts), which supports role-aware chaining with `.role([...])` and delegates authorization checks to [src/services/roleService.ts](src/services/roleService.ts).
 
 Current route layout:
 
@@ -388,7 +388,7 @@ Routing principles used:
 
 ### Route Code Sample
 
-Main router sample from `src/routes/index.ts`:
+Main router sample from `src/routes/route.ts`:
 
 ```ts
 import { authController } from '@/controllers/authController.ts';
@@ -508,8 +508,8 @@ This standardization is intentional so the frontend can work with one consistent
 1. **Client sends an HTTP request** to the Express server.
 2. The app bootstrap in [src/app.ts](src/app.ts) initializes the Express app and applies core middleware such as JSON parsing and static file serving.
 3. The CORS middleware in [src/middleware/corsMiddleware.ts](src/middleware/corsMiddleware.ts) runs first for cross-origin requests, adds the required headers, and handles preflight `OPTIONS` requests.
-4. The route layer in [src/routes/index.ts](src/routes/index.ts) resolves endpoints, while [src/services/routeService.ts](src/services/routeService.ts) injects role guards for routes using `.role([...])`.
-5. The request is matched in [src/routes/index.ts](src/routes/index.ts), where route-specific middleware such as guest or auth checks run before the controller.
+4. The route layer in [src/routes/route.ts](src/routes/route.ts) resolves endpoints, while [src/services/routeService.ts](src/services/routeService.ts) injects role guards for routes using `.role([...])`.
+5. The request is matched in [src/routes/route.ts](src/routes/route.ts), where route-specific middleware such as guest or auth checks run before the controller.
 6. The controller in [src/controllers](src/controllers) handles the request, validates the context, and delegates business logic to the appropriate service.
 7. The service uses repositories and database entities in [src/database](src/database) to read or write data.
 8. The response is returned in the shared API envelope through [src/utils/response.ts](src/utils/response.ts).
@@ -522,7 +522,7 @@ HTTP Request
   -> app.ts
   -> corsMiddleware
   -> app route mount (/ and /api)
-  -> routes/index.ts
+  -> routes/route.ts
   -> authMiddleware / guestMiddleware
   -> controller
   -> service
