@@ -1,19 +1,7 @@
 import { AppDataSource } from '@/database/data-source.ts';
+import { HealthServiceInterface, HealthStatus } from '@/services/interfaces/HealthServiceInterface.ts';
 
-export type HealthStatus = {
-  status: 'ok' | 'error';
-  service: string;
-  version: string;
-  database: {
-    connected: boolean;
-    host: string;
-    database: string;
-    version?: string;
-    error?: string;
-  };
-};
-
-export class HealthService {
+export class HealthService implements HealthServiceInterface {
   async getHealthStatus(): Promise<HealthStatus> {
     try {
       const result = await AppDataSource.query('SELECT VERSION() as version');

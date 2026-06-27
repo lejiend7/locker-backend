@@ -2,6 +2,7 @@ import { User } from '@/database/entities/User.ts';
 import { Package } from '@/database/entities/Package.ts';
 import { UserRepositoryInterface } from '@/database/repositories/interfaces/UserRepositoryInterface.ts';
 import { PackageRepositoryInterface } from '@/database/repositories/interfaces/PackageRepositoryInterface.ts';
+import { StoragePriceServiceInterface } from '@/services/interfaces/StoragePriceServiceInterface.ts';
 import { PackageCustomerSelectionServiceInterface } from '@/services/interfaces/PackageCustomerSelectionServiceInterface.ts';
 import {
   PackageDeliveryDetails,
@@ -13,7 +14,8 @@ export class PackageService
 {
   constructor(
     private readonly userRepository: UserRepositoryInterface,
-    private readonly packageRepository: PackageRepositoryInterface
+    private readonly packageRepository: PackageRepositoryInterface,
+    private readonly storagePriceService: StoragePriceServiceInterface,
   ) {}
 
   async getEligibleCustomer(): Promise<User | null> {
@@ -58,7 +60,7 @@ export class PackageService
     if (deliveryStatus === 'ASSIGNED_TO_AGENT') {
       return {
         pickup_code: null,
-        deposited_at: null,
+        stored_at: null,
         pickup_at: null,
         retrieved_at: null,
         storage_price: null,
@@ -66,13 +68,13 @@ export class PackageService
     }
 
     const pickupAt = new Date(assignedAt.getTime() + 60 * 60 * 1000);
-    const depositedAt = new Date(pickupAt.getTime() + 2 * 60 * 60 * 1000);
+    const storedAt = new Date(pickupAt.getTime() + 2 * 60 * 60 * 1000);
     const pickupCode = `PKG-${deliveryStatus}-${String(sequence).padStart(4, '0')}`;
 
     if (deliveryStatus === 'READY_TO_PICK') {
       return {
         pickup_code: pickupCode,
-        deposited_at: depositedAt,
+        stored_at: storedAt,
         pickup_at: pickupAt,
         retrieved_at: null,
         storage_price: null,
@@ -81,30 +83,22 @@ export class PackageService
 
     const storageDaysPattern = [3, 7, 12];
     const storageDays = storageDaysPattern[(sequence - 1) % storageDaysPattern.length];
-    const retrievedAt = new Date(depositedAt.getTime() + storageDays * 24 * 60 * 60 * 1000);
+    const retrievedAt = new Date(storedAt.getTime() + storageDays * 24 * 60 * 60 * 1000);
 
     return {
       pickup_code: pickupCode,
-      deposited_at: depositedAt,
+      stored_at: storedAt,
       pickup_at: pickupAt,
       retrieved_at: retrievedAt,
-      storage_price: this.calculateStoragePrice(depositedAt, retrievedAt),
+      storage_price: this.storagePriceService.calculateStoragePrice(storedAt, retrievedAt),
     };
-  }
-
-  calculateStoragePrice(depositedAt: Date, retrievedAt: Date): number {
-    const millisecondsPerDay = 24 * 60 * 60 * 1000;
-    const rawDays = (retrievedAt.getTime() - depositedAt.getTime()) / millisecondsPerDay;
-    const days = Math.max(1, Math.ceil(rawDays));
-
-    const tier1 = Math.min(days, 5) * 1;
-    const tier2 = Math.min(Math.max(days - 5, 0), 5) * 2;
-    const tier3 = Math.max(days - 10, 0) * 3;
-
-    return Number((tier1 + tier2 + tier3).toFixed(2));
   }
 
   async listByAgent(agentId: number): Promise<Package[]> {
     return this.packageRepository.listByAgent(agentId);
+  }
+
+  calculateStoragePrice(storedAt: Date, referenceAt: Date): number {
+    return this.storagePriceService.calculateStoragePrice(storedAt, referenceAt);
   }
 }

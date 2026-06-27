@@ -55,7 +55,7 @@ export class Package {
   assigned_at!: Date;
 
   @Column({ type: 'datetime', precision: 3, nullable: true })
-  deposited_at!: Date | null;
+  stored_at!: Date | null;
 
   @Column({ type: 'datetime', precision: 3, nullable: true })
   pickup_at!: Date | null;

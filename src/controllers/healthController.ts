@@ -1,9 +1,9 @@
 import { type Request, type Response } from 'express';
-import { HealthService } from '@/services/healthService.ts';
+import { HealthServiceInterface } from '@/services/interfaces/HealthServiceInterface.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 
 export class HealthController {
-  private readonly healthService = new HealthService();
+  constructor(private readonly healthService: HealthServiceInterface) {}
 
   index = asyncHandler(async (req: Request, res: Response) => {
     const status = await this.healthService.getHealthStatus();
@@ -15,5 +15,3 @@ export class HealthController {
     return res.status(500).json(status);
   });
 }
-
-export const healthController = new HealthController();

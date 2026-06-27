@@ -11,6 +11,7 @@ import { LockerAvailabilityServiceInterface } from '@/services/interfaces/Locker
 import { PackageServiceInterface } from '@/services/interfaces/PackageServiceInterface.ts';
 import { LockerService } from '@/services/lockerService.ts';
 import { PackageService } from '@/services/packageService.ts';
+import { storagePriceService } from '@/services/storagePriceService.ts';
 
 function buildPackageCode(sequence: number): string {
   return `PKG-${String(sequence).padStart(8, '0')}`;
@@ -76,7 +77,7 @@ export function buildPackageSeedData({
     pickup_code: deliveryDetails.pickup_code,
     customer_name: customerName,
     assigned_at: assignedAt,
-    deposited_at: deliveryDetails.deposited_at,
+    stored_at: deliveryDetails.stored_at,
     pickup_at: deliveryDetails.pickup_at,
     retrieved_at: deliveryDetails.retrieved_at,
     storage_price: deliveryDetails.storage_price,
@@ -150,6 +151,7 @@ async function seedPackages() {
     const packageService: PackageServiceInterface = new PackageService(
       new UserRepository(userRepo),
       new PackageRepository(packageRepo),
+      storagePriceService,
     );
 
     const agentUsers = await userRepo.find({

@@ -1,9 +1,11 @@
-import { authController } from '@/controllers/authController.ts';
-import { healthController } from '@/controllers/healthController.ts';
-import { landingController } from '@/controllers/landingController.ts';
-import { stationController } from '@/controllers/stationController.ts';
-import { lockerController } from '@/controllers/lockerController.ts';
-import { packageController } from '@/controllers/packageController.ts';
+import {
+	authController,
+	healthController,
+	landingController,
+	stationController,
+	lockerController,
+	packageController,
+} from '@/composition/controllers.ts';
 import { authMiddleware } from '@/middleware/authMiddleware.ts';
 import { guestMiddleware } from '@/middleware/guestMiddleware.ts';
 import { routeService } from '@/services/routeService.ts';
@@ -23,5 +25,6 @@ router.get('/lockers', authMiddleware, lockerController.list).role(['admin', 'de
 router.post('/lockers', authMiddleware, lockerController.create).role(['admin']);
 router.get('/packages', authMiddleware, packageController.list).role(['delivery_agent']);
 router.put('/packages/assign-locker', authMiddleware, packageController.assignLocker).role(['delivery_agent']);
+router.put('/packages/store', authMiddleware, packageController.store).role(['delivery_agent']);
 
 export default router.toExpressRouter();

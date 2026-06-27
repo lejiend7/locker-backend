@@ -1,15 +1,12 @@
 import { type Request, type Response } from 'express';
-import { AppDataSource } from '@/database/data-source.ts';
-import { Locker } from '@/database/entities/Locker.ts';
-import { LockerRepository } from '@/database/repositories/LockerRepository.ts';
 import { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.ts';
 import { CreateLockerDto } from '@/dtos/createLockerDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
-const lockerRepository: LockerRepositoryInterface = new LockerRepository(AppDataSource.getRepository(Locker));
-
 export class LockerController {
+  constructor(private readonly lockerRepository: LockerRepositoryInterface) {}
+
   list = asyncHandler((req: Request, res: Response) => this.handleList(req, res));
 
   create = asyncHandler((req: Request, res: Response) => this.handleCreate(req, res));
@@ -22,8 +19,8 @@ export class LockerController {
         : null;
 
     const lockers = stationIdQuery
-      ? await lockerRepository.findByStationId(Number(stationIdQuery))
-      : await lockerRepository.findAll();
+      ? await this.lockerRepository.findByStationId(Number(stationIdQuery))
+      : await this.lockerRepository.findAll();
 
     return res.status(200).json(
       buildApiResponse({
@@ -52,7 +49,7 @@ export class LockerController {
 
     const { size, stationId, label } = validation.value;
 
-    const createdLocker = await lockerRepository.create({
+    const createdLocker = await this.lockerRepository.create({
       station_id: Number(stationId),
       size,
       label,
@@ -70,5 +67,3 @@ export class LockerController {
     );
   }
 }
-
-export const lockerController = new LockerController();
