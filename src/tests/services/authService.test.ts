@@ -13,9 +13,8 @@ function createRandomTestIdentity(prefix = 'test') {
 
 function createMockRepo() {
   return {
-    findOne: vi.fn(),
-    create: vi.fn((input) => input),
-    save: vi.fn(async (input) => ({ id: 1, ...input })),
+    findByEmail: vi.fn(),
+    create: vi.fn(async (input) => ({ id: 1, ...input })),
   };
 }
 
@@ -40,7 +39,7 @@ describe('AuthService', () => {
   it('signup fails when email already exists', async () => {
     const repo = createMockRepo();
     const { name, email } = createRandomTestIdentity('test');
-    repo.findOne.mockResolvedValue({ id: 7, email });
+    repo.findByEmail.mockResolvedValue({ id: 7, email });
 
     const service = new AuthService(repo as any, jwtSecret);
     const result = await service.signup({ name, email, password: 'Secret123!' });
@@ -51,7 +50,7 @@ describe('AuthService', () => {
 
   it('signup creates user with hashed password, default role, and token', async () => {
     const repo = createMockRepo();
-    repo.findOne.mockResolvedValue(null);
+    repo.findByEmail.mockResolvedValue(null);
 
     vi.spyOn(bcrypt, 'hash').mockResolvedValue('$hashed' as never);
     vi.spyOn(jwt, 'sign').mockReturnValue('jwt-token' as never);
@@ -82,7 +81,7 @@ describe('AuthService', () => {
 
   it('signup rejects admin role on the public endpoint', async () => {
     const repo = createMockRepo();
-    repo.findOne.mockResolvedValue(null);
+    repo.findByEmail.mockResolvedValue(null);
 
     const { name, email } = createRandomTestIdentity('test');
     const service = new AuthService(repo as any, jwtSecret);
@@ -95,12 +94,12 @@ describe('AuthService', () => {
 
     expect(result.success).toBe(false);
     expect(result.message).toBe('role must be customer or delivery_agent');
-    expect(repo.save).not.toHaveBeenCalled();
+    expect(repo.create).not.toHaveBeenCalled();
   });
 
   it('signupAdmin allows admin role for the separate admin endpoint', async () => {
     const repo = createMockRepo();
-    repo.findOne.mockResolvedValue(null);
+    repo.findByEmail.mockResolvedValue(null);
 
     vi.spyOn(bcrypt, 'hash').mockResolvedValue('$hashed' as never);
     vi.spyOn(jwt, 'sign').mockReturnValue('jwt-admin-token' as never);
@@ -124,7 +123,7 @@ describe('AuthService', () => {
 
   it('login fails when user does not exist', async () => {
     const repo = createMockRepo();
-    repo.findOne.mockResolvedValue(null);
+    repo.findByEmail.mockResolvedValue(null);
     const { email } = createRandomTestIdentity('test');
 
     const service = new AuthService(repo as any, jwtSecret);
@@ -137,7 +136,7 @@ describe('AuthService', () => {
   it('login fails on invalid password', async () => {
     const repo = createMockRepo();
     const { name, email } = createRandomTestIdentity('test');
-    repo.findOne.mockResolvedValue({ id: 2, name, email, password: '$hash' });
+    repo.findByEmail.mockResolvedValue({ id: 2, name, email, password: '$hash' });
     vi.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
 
     const service = new AuthService(repo as any, jwtSecret);
@@ -150,7 +149,7 @@ describe('AuthService', () => {
   it('login returns token and user on valid credentials', async () => {
     const repo = createMockRepo();
     const { name, email } = createRandomTestIdentity('test');
-    repo.findOne.mockResolvedValue({ id: 3, name, email, password: '$hash' });
+    repo.findByEmail.mockResolvedValue({ id: 3, name, email, password: '$hash' });
     vi.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
     vi.spyOn(jwt, 'sign').mockReturnValue('jwt-login-token' as never);
 

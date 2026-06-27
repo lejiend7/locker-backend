@@ -2,20 +2,24 @@ import { type Request, type Response } from 'express';
 import { AppDataSource } from '@/database/data-source.ts';
 import { Package } from '@/database/entities/Package.ts';
 import { PackageRepository } from '@/database/repositories/PackageRepository.ts';
+import { PackageRepositoryInterface } from '@/database/repositories/interfaces/PackageRepositoryInterface.ts';
 import { User } from '@/database/entities/User.ts';
 import { Locker } from '@/database/entities/Locker.ts';
 import { UserRepository } from '@/database/repositories/UserRepository.ts';
+import { UserRepositoryInterface } from '@/database/repositories/interfaces/UserRepositoryInterface.ts';
 import { LockerRepository } from '@/database/repositories/LockerRepository.ts';
+import { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.ts';
 import { PackageService } from '@/services/packageService.ts';
 import { AssignLockerDto } from '@/dtos/assignLockerDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
-const packageRepository = new PackageRepository(AppDataSource.getRepository(Package));
-const lockerRepository = new LockerRepository(AppDataSource.getRepository(Locker));
+const packageRepository: PackageRepositoryInterface = new PackageRepository(AppDataSource.getRepository(Package));
+const lockerRepository: LockerRepositoryInterface = new LockerRepository(AppDataSource.getRepository(Locker));
+const userRepository: UserRepositoryInterface = new UserRepository(AppDataSource.getRepository(User));
 
 const packageService = new PackageService(
-  new UserRepository(AppDataSource.getRepository(User)),
+  userRepository,
   packageRepository
 );
 

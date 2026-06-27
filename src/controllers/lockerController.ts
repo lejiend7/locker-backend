@@ -2,11 +2,12 @@ import { type Request, type Response } from 'express';
 import { AppDataSource } from '@/database/data-source.ts';
 import { Locker } from '@/database/entities/Locker.ts';
 import { LockerRepository } from '@/database/repositories/LockerRepository.ts';
+import { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.ts';
 import { CreateLockerDto } from '@/dtos/createLockerDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
-const lockerRepository = new LockerRepository(AppDataSource.getRepository(Locker));
+const lockerRepository: LockerRepositoryInterface = new LockerRepository(AppDataSource.getRepository(Locker));
 
 export class LockerController {
   list = asyncHandler((req: Request, res: Response) => this.handleList(req, res));

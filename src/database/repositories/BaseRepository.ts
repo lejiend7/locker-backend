@@ -31,6 +31,11 @@ export abstract class BaseRepository<T extends ObjectLiteral> {
   }
 
   async findOne(options: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<T | null> {
-    return this.repository.findOne(options as any);
+    const normalizedOptions =
+      options && typeof options === 'object' && 'where' in (options as any)
+        ? (options as any)
+        : ({ where: options } as any);
+
+    return this.repository.findOne(normalizedOptions);
   }
 }

@@ -1,6 +1,8 @@
 import { type Request, type Response } from 'express';
 import { AppDataSource } from '@/database/data-source.ts';
 import { User } from '@/database/entities/User.ts';
+import { UserRepository } from '@/database/repositories/UserRepository.ts';
+import { UserRepositoryInterface } from '@/database/repositories/interfaces/UserRepositoryInterface.ts';
 import { AuthService } from '@/services/authService.ts';
 import { AuthServiceInterface } from '@/services/interfaces/AuthServiceInterface.ts';
 import { LoginDto } from '@/dtos/loginDto.ts';
@@ -10,7 +12,8 @@ import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
 const jwtSecret = process.env.JWT_SECRET || '';
-const authService: AuthServiceInterface = new AuthService(AppDataSource.getRepository(User), jwtSecret);
+const userRepository: UserRepositoryInterface = new UserRepository(AppDataSource.getRepository(User));
+const authService: AuthServiceInterface = new AuthService(userRepository, jwtSecret);
 
 export class AuthController {
   signup = asyncHandler((req: Request, res: Response) => this.handleSignup(req, res));

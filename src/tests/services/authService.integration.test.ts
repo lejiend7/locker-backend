@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Repository } from 'typeorm';
 import { AppDataSource } from '@/database/data-source.ts';
 import { User } from '@/database/entities/User.ts';
+import { UserRepository } from '@/database/repositories/UserRepository.ts';
+import type { UserRepositoryInterface } from '@/database/repositories/interfaces/UserRepositoryInterface.ts';
 import { AuthService } from '@/services/authService.ts';
 
 function createRandomTestIdentity(prefix = 'test') {
@@ -14,6 +16,7 @@ function createRandomTestIdentity(prefix = 'test') {
 
 describe('AuthService integration', () => {
   let userRepository: Repository<User>;
+  let userRepoInterface: UserRepositoryInterface;
   let authService: AuthService;
 
   beforeAll(async () => {
@@ -22,7 +25,8 @@ describe('AuthService integration', () => {
     }
 
     userRepository = AppDataSource.getRepository(User);
-    authService = new AuthService(userRepository, 'test-secret');
+    userRepoInterface = new UserRepository(userRepository);
+    authService = new AuthService(userRepoInterface, 'test-secret');
   });
 
   afterAll(async () => {
