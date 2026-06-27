@@ -45,7 +45,7 @@ CREATE TABLE packages (
   pickup_code VARCHAR(191) NULL,
   customer_name VARCHAR(255) NOT NULL,
   assigned_at DATETIME(3) NOT NULL,
-  deposited_at DATETIME(3) NULL,
+  stored_at DATETIME(3) NULL,
   pickup_at DATETIME(3) NULL,
   retrieved_at DATETIME(3) NULL,
   storage_price DECIMAL(6, 2) NULL,

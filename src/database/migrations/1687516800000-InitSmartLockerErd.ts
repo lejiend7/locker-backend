@@ -54,7 +54,7 @@ export class InitSmartLockerErd1687516800000 implements MigrationInterface {
         \`pickup_code\` varchar(191) NULL,
         \`customer_name\` varchar(255) NOT NULL,
         \`assigned_at\` datetime(3) NOT NULL,
-        \`deposited_at\` datetime(3) NULL,
+        \`stored_at\` datetime(3) NULL,
         \`pickup_at\` datetime(3) NULL,
         \`retrieved_at\` datetime(3) NULL,
         \`storage_price\` decimal(6, 2) NULL,

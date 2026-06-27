@@ -1,31 +1,29 @@
 import { type Request, type Response } from 'express';
-import { AppDataSource } from '@/database/data-source.ts';
-import { Package } from '@/database/entities/Package.ts';
-import { PackageRepository } from '@/database/repositories/PackageRepository.ts';
 import { PackageRepositoryInterface } from '@/database/repositories/interfaces/PackageRepositoryInterface.ts';
-import { User } from '@/database/entities/User.ts';
-import { Locker } from '@/database/entities/Locker.ts';
-import { UserRepository } from '@/database/repositories/UserRepository.ts';
-import { UserRepositoryInterface } from '@/database/repositories/interfaces/UserRepositoryInterface.ts';
-import { LockerRepository } from '@/database/repositories/LockerRepository.ts';
 import { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.ts';
-import { PackageService } from '@/services/packageService.ts';
+import { PackageServiceInterface } from '@/services/interfaces/PackageServiceInterface.ts';
+import { StoragePriceServiceInterface } from '@/services/interfaces/StoragePriceServiceInterface.ts';
 import { AssignLockerDto } from '@/dtos/assignLockerDto.ts';
+import { StorePackageDto } from '@/dtos/storePackageDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
-const packageRepository: PackageRepositoryInterface = new PackageRepository(AppDataSource.getRepository(Package));
-const lockerRepository: LockerRepositoryInterface = new LockerRepository(AppDataSource.getRepository(Locker));
-const userRepository: UserRepositoryInterface = new UserRepository(AppDataSource.getRepository(User));
-
-const packageService = new PackageService(
-  userRepository,
-  packageRepository
-);
+function generatePickupCode(packageId: number): string {
+  const token = `${packageId}${Date.now()}`.slice(-6);
+  return `PK${token}`.toUpperCase();
+}
 
 export class PackageController {
+  constructor(
+    private readonly packageRepository: PackageRepositoryInterface,
+    private readonly lockerRepository: LockerRepositoryInterface,
+    private readonly packageService: PackageServiceInterface,
+    private readonly storagePriceService: StoragePriceServiceInterface,
+  ) {}
+
   list = asyncHandler((req: Request, res: Response) => this.handleList(req, res));
   assignLocker = asyncHandler((req: Request, res: Response) => this.handleAssignLocker(req, res));
+  store = asyncHandler((req: Request, res: Response) => this.handleStore(req, res));
 
   private async handleList(req: Request, res: Response) {
     if (!req.authUser) {
@@ -40,7 +38,7 @@ export class PackageController {
       );
     }
 
-    const packages = await packageService.listByAgent(Number(req.authUser.sub));
+    const packages = await this.packageService.listByAgent(Number(req.authUser.sub));
     const packageSummaries = packages.map((pkg) => ({
       id: pkg.id,
       package_code: pkg.package_code,
@@ -52,7 +50,7 @@ export class PackageController {
       pickup_code: pkg.pickup_code,
       delivery_status: pkg.delivery_status,
       assigned_at: pkg.assigned_at,
-      deposited_at: pkg.deposited_at,
+      stored_at: pkg.stored_at,
       pickup_at: pkg.pickup_at,
       retrieved_at: pkg.retrieved_at,
       storage_price: pkg.storage_price,
@@ -138,7 +136,7 @@ export class PackageController {
     const stationId = validation.value.stationId ? Number(validation.value.stationId) : null;
     const requestedLockerId = validation.value.lockerId ? Number(validation.value.lockerId) : null;
 
-    const pkg = await packageRepository.findById(packageId);
+    const pkg = await this.packageRepository.findById(packageId);
 
     if (!pkg) {
       return res.status(404).json(
@@ -185,10 +183,10 @@ export class PackageController {
     const isCompatible = (lockerSize: 'small' | 'medium' | 'large') =>
       sizeRank[lockerSize] >= sizeRank[pkg.package_size];
 
-    let selectedLocker = null as Awaited<ReturnType<typeof lockerRepository.findById>>;
+    let selectedLocker = null as Awaited<ReturnType<typeof this.lockerRepository.findById>>;
 
     if (requestedLockerId) {
-      const locker = await lockerRepository.findById(requestedLockerId);
+      const locker = await this.lockerRepository.findById(requestedLockerId);
 
       if (!locker || locker.status !== 'available') {
         return res.status(400).json(
@@ -229,8 +227,8 @@ export class PackageController {
       selectedLocker = locker;
     } else {
       const baseLockers = stationId
-        ? await lockerRepository.findByStationId(stationId)
-        : await lockerRepository.findAvailableLockers();
+        ? await this.lockerRepository.findByStationId(stationId)
+        : await this.lockerRepository.findAvailableLockers();
 
       const compatibleAvailable = baseLockers
         .filter((locker) => locker.status === 'available' && isCompatible(locker.size))
@@ -258,8 +256,8 @@ export class PackageController {
       );
     }
 
-    await lockerRepository.updateStatus(selectedLocker.id, 'occupied');
-    await packageRepository.update(pkg.id, {
+    await this.lockerRepository.updateStatus(selectedLocker.id, 'occupied');
+    await this.packageRepository.update(pkg.id, {
       locker_id: selectedLocker.id,
       agent_id: Number(req.authUser.sub),
     } as any);
@@ -278,6 +276,114 @@ export class PackageController {
       })
     );
   }
-}
 
-export const packageController = new PackageController();
+  private async handleStore(req: Request, res: Response) {
+    const validation = StorePackageDto.validate(req.body ?? {});
+
+    if (!validation.isValid) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: validation.message,
+          data: [],
+          errors: validation.errors,
+        })
+      );
+    }
+
+    if (!req.authUser) {
+      return res.status(401).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 401,
+          message: 'Unauthorized',
+          data: [],
+          errors: ['Unauthorized'],
+        })
+      );
+    }
+
+    const packageId = Number(validation.value.packageId);
+    const pkg = await this.packageRepository.findById(packageId);
+
+    if (!pkg) {
+      return res.status(404).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 404,
+          message: 'Package not found',
+          data: [],
+          errors: ['Package not found'],
+        })
+      );
+    }
+
+    if (pkg.agent_id !== Number(req.authUser.sub)) {
+      return res.status(403).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 403,
+          message: 'You can only store your own assigned package',
+          data: [],
+          errors: ['You can only store your own assigned package'],
+        })
+      );
+    }
+
+    if (pkg.delivery_status !== 'ASSIGNED_TO_AGENT') {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: 'Only ASSIGNED_TO_AGENT packages can be stored',
+          data: [],
+          errors: ['Only ASSIGNED_TO_AGENT packages can be stored'],
+        })
+      );
+    }
+
+    if (!pkg.locker_id) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: 'Package has no assigned locker',
+          data: [],
+          errors: ['Package has no assigned locker'],
+        })
+      );
+    }
+
+    const locker = await this.lockerRepository.findById(pkg.locker_id);
+
+    const storedAt = validation.value.storedAt ? new Date(validation.value.storedAt) : new Date();
+    const now = new Date();
+    const storagePrice = this.storagePriceService.calculateStoragePrice(storedAt, now);
+    const pickupCode = pkg.pickup_code ?? generatePickupCode(pkg.id);
+
+    await this.packageRepository.update(pkg.id, {
+      delivery_status: 'READY_TO_PICK',
+      stored_at: storedAt,
+      pickup_code: pickupCode,
+      storage_price: storagePrice,
+    } as any);
+
+    return res.status(200).json(
+      buildApiResponse({
+        success: true,
+        statusCode: 200,
+        message: 'Package stored successfully',
+        data: {
+          package_id: String(pkg.id),
+          locker_id: String(pkg.locker_id),
+          locker_label: locker?.label ?? null,
+          pickup_code: pickupCode,
+          delivery_status: 'READY_TO_PICK',
+          stored_at: storedAt.toISOString(),
+          storage_price: storagePrice,
+        },
+      })
+    );
+  }
+}

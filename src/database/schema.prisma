@@ -79,7 +79,7 @@ model packages {
   pickup_code     String?         @unique
   customer_name   String
   assigned_at     DateTime
-  deposited_at    DateTime?
+  stored_at       DateTime?
   pickup_at       DateTime?
   retrieved_at    DateTime?
   storage_price   Decimal?        @db.Decimal(6, 2)

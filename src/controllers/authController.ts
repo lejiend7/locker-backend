@@ -1,9 +1,4 @@
 import { type Request, type Response } from 'express';
-import { AppDataSource } from '@/database/data-source.ts';
-import { User } from '@/database/entities/User.ts';
-import { UserRepository } from '@/database/repositories/UserRepository.ts';
-import { UserRepositoryInterface } from '@/database/repositories/interfaces/UserRepositoryInterface.ts';
-import { AuthService } from '@/services/authService.ts';
 import { AuthServiceInterface } from '@/services/interfaces/AuthServiceInterface.ts';
 import { LoginDto } from '@/dtos/loginDto.ts';
 import { SignupAdminDto } from '@/dtos/signupAdminDto.ts';
@@ -11,11 +6,9 @@ import { SignupDto } from '@/dtos/signupDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
-const jwtSecret = process.env.JWT_SECRET || '';
-const userRepository: UserRepositoryInterface = new UserRepository(AppDataSource.getRepository(User));
-const authService: AuthServiceInterface = new AuthService(userRepository, jwtSecret);
-
 export class AuthController {
+  constructor(private readonly authService: AuthServiceInterface) {}
+
   signup = asyncHandler((req: Request, res: Response) => this.handleSignup(req, res));
 
   signupAdmin = asyncHandler((req: Request, res: Response) => this.handleSignupAdmin(req, res));
@@ -39,7 +32,7 @@ export class AuthController {
       );
     }
 
-    const result = await authService.signup(validation.value);
+    const result = await this.authService.signup(validation.value);
 
     if (!result.success) {
       return res.status(400).json(result);
@@ -63,7 +56,7 @@ export class AuthController {
       );
     }
 
-    const result = await authService.signupAdmin(validation.value);
+    const result = await this.authService.signupAdmin(validation.value);
 
     if (!result.success) {
       return res.status(400).json(result);
@@ -87,7 +80,7 @@ export class AuthController {
       );
     }
 
-    const result = await authService.login(validation.value);
+    const result = await this.authService.login(validation.value);
 
     if (!result.success) {
       const status = result.message === 'Invalid email or password' ? 401 : 400;
@@ -117,5 +110,3 @@ export class AuthController {
     });
   }
 }
-
-export const authController = new AuthController();

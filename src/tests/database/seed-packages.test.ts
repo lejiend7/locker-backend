@@ -4,6 +4,7 @@ import { BaseRepository } from '@/database/repositories/BaseRepository.ts';
 import { LockerAvailabilityServiceInterface } from '@/services/interfaces/LockerAvailabilityServiceInterface.ts';
 import { PackageServiceInterface } from '@/services/interfaces/PackageServiceInterface.ts';
 import { PackageService } from '@/services/packageService.ts';
+import { storagePriceService } from '@/services/storagePriceService.ts';
 
 const packageServiceMock: PackageServiceInterface = {
   getEligibleCustomer: async () => null,
@@ -11,7 +12,7 @@ const packageServiceMock: PackageServiceInterface = {
     if (deliveryStatus === 'ASSIGNED_TO_AGENT') {
       return {
         pickup_code: null,
-        deposited_at: null,
+        stored_at: null,
         pickup_at: null,
         retrieved_at: null,
         storage_price: null,
@@ -19,13 +20,13 @@ const packageServiceMock: PackageServiceInterface = {
     }
 
     const pickupAt = new Date(assignedAt.getTime() + 60 * 60 * 1000);
-    const depositedAt = new Date(assignedAt.getTime() + 2 * 60 * 60 * 1000);
+    const storedAt = new Date(assignedAt.getTime() + 2 * 60 * 60 * 1000);
     const pickupCode = `PKG-${deliveryStatus}-${String(sequence).padStart(4, '0')}`;
 
     if (deliveryStatus === 'READY_TO_PICK') {
       return {
         pickup_code: pickupCode,
-        deposited_at: depositedAt,
+        stored_at: storedAt,
         pickup_at: pickupAt,
         retrieved_at: null,
         storage_price: null,
@@ -34,13 +35,12 @@ const packageServiceMock: PackageServiceInterface = {
 
     return {
       pickup_code: pickupCode,
-      deposited_at: depositedAt,
+      stored_at: storedAt,
       pickup_at: pickupAt,
-      retrieved_at: new Date(depositedAt.getTime() + 3 * 24 * 60 * 60 * 1000),
+      retrieved_at: new Date(storedAt.getTime() + 3 * 24 * 60 * 60 * 1000),
       storage_price: 3,
     };
   },
-  calculateStoragePrice: () => 0,
   listByAgent: async () => [],
 };
 
@@ -149,7 +149,7 @@ describe('buildPackageSeedData', () => {
       'PKG-00000003',
     ]);
     expect(payloads.every((payload) => payload.pickup_code?.startsWith('PKG-READY_TO_PICK-'))).toBe(true);
-    expect(payloads.every((payload) => payload.deposited_at instanceof Date)).toBe(true);
+    expect(payloads.every((payload) => payload.stored_at instanceof Date)).toBe(true);
     expect(payloads.every((payload) => payload.pickup_at instanceof Date)).toBe(true);
     expect(payloads.every((payload) => payload.retrieved_at === null)).toBe(true);
   });
@@ -162,6 +162,7 @@ describe('buildPackageSeedData', () => {
     const packageService = new PackageService(
       { findAll: async () => [], findOne: async () => null } as any,
       { findOne: async () => null } as any,
+      storagePriceService,
     );
 
     const payloads = buildPackageSeedPayloads({
@@ -177,20 +178,21 @@ describe('buildPackageSeedData', () => {
     expect(payloads).toHaveLength(3);
     expect(payloads.every((payload) => payload.delivery_status === 'PICKED')).toBe(true);
     expect(payloads.every((payload) => payload.pickup_at instanceof Date)).toBe(true);
-    expect(payloads.every((payload) => payload.deposited_at instanceof Date)).toBe(true);
+    expect(payloads.every((payload) => payload.stored_at instanceof Date)).toBe(true);
     expect(payloads.every((payload) => payload.retrieved_at instanceof Date)).toBe(true);
     expect(payloads.map((payload) => payload.storage_price)).toEqual([3, 9, 21]);
   });
 
-  it('calculates tiered storage price from deposited and retrieved dates', () => {
+  it('calculates tiered storage price from stored and retrieved dates', () => {
     const packageService = new PackageService(
       { findAll: async () => [], findOne: async () => null } as any,
       { findOne: async () => null } as any,
+      storagePriceService,
     );
 
-    const depositedAt = new Date('2026-06-01T08:00:00.000Z');
-    expect(packageService.calculateStoragePrice(depositedAt, new Date('2026-06-04T08:00:00.000Z'))).toBe(3);
-    expect(packageService.calculateStoragePrice(depositedAt, new Date('2026-06-08T08:00:00.000Z'))).toBe(9);
-    expect(packageService.calculateStoragePrice(depositedAt, new Date('2026-06-13T08:00:00.000Z'))).toBe(21);
+    const storedAt = new Date('2026-06-01T08:00:00.000Z');
+    expect(packageService.calculateStoragePrice(storedAt, new Date('2026-06-04T08:00:00.000Z'))).toBe(3);
+    expect(packageService.calculateStoragePrice(storedAt, new Date('2026-06-08T08:00:00.000Z'))).toBe(9);
+    expect(packageService.calculateStoragePrice(storedAt, new Date('2026-06-13T08:00:00.000Z'))).toBe(21);
   });
 });
