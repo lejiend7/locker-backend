@@ -66,8 +66,8 @@ model users {
   email      String     @unique
   created_at DateTime   @default(now())
 
-  packages   packages[]
-  messages   messages[]
+  packages       packages[]
+  notifications  notifications[]
 }
 
 model packages {
@@ -85,16 +85,16 @@ model packages {
   storage_price   Decimal?        @db.Decimal(6, 2)
   created_at      DateTime        @default(now())
 
-  locker          lockers         @relation(fields: [locker_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  user            users           @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  messages        messages[]
+  locker          lockers          @relation(fields: [locker_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user            users            @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  notifications   notifications[]
 
   @@index([locker_id])
   @@index([user_id])
   @@index([delivery_status])
 }
 
-model messages {
+model notifications {
   id           String    @id
   user_id      String
   package_id   String
@@ -105,8 +105,8 @@ model messages {
   is_read      Boolean   @default(false)
   created_at   DateTime  @default(now())
 
-  user         users     @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  package      packages  @relation(fields: [package_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user         users      @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  package      packages   @relation(fields: [package_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([user_id])
   @@index([package_id])

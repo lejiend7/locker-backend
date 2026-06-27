@@ -70,7 +70,7 @@ export class InitSmartLockerErd1687516800000 implements MigrationInterface {
     );
 
     await queryRunner.query(
-      `CREATE TABLE \`messages\` (
+      `CREATE TABLE \`notifications\` (
         \`id\` int NOT NULL AUTO_INCREMENT,
         \`user_id\` int NOT NULL,
         \`package_id\` int NOT NULL,
@@ -80,17 +80,17 @@ export class InitSmartLockerErd1687516800000 implements MigrationInterface {
         \`pickup_code\` varchar(191) NOT NULL,
         \`is_read\` boolean NOT NULL DEFAULT 0,
         \`created_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-        INDEX \`idx_messages_user_id\` (\`user_id\`),
-        INDEX \`idx_messages_package_id\` (\`package_id\`),
+        INDEX \`idx_notifications_user_id\` (\`user_id\`),
+        INDEX \`idx_notifications_package_id\` (\`package_id\`),
         PRIMARY KEY (\`id\`),
-        CONSTRAINT \`FK_messages_user_id\` FOREIGN KEY (\`user_id\`) REFERENCES \`users\`(\`id\`) ON UPDATE CASCADE ON DELETE RESTRICT,
-        CONSTRAINT \`FK_messages_package_id\` FOREIGN KEY (\`package_id\`) REFERENCES \`packages\`(\`id\`) ON UPDATE CASCADE ON DELETE RESTRICT
+        CONSTRAINT \`FK_notifications_user_id\` FOREIGN KEY (\`user_id\`) REFERENCES \`users\`(\`id\`) ON UPDATE CASCADE ON DELETE RESTRICT,
+        CONSTRAINT \`FK_notifications_package_id\` FOREIGN KEY (\`package_id\`) REFERENCES \`packages\`(\`id\`) ON UPDATE CASCADE ON DELETE RESTRICT
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE \`messages\``);
+    await queryRunner.query(`DROP TABLE \`notifications\``);
     await queryRunner.query(`DROP TABLE \`packages\``);
     await queryRunner.query(`DROP TABLE \`users\``);
     await queryRunner.query(`DROP TABLE \`lockers\``);

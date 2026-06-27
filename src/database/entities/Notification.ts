@@ -10,10 +10,10 @@ import {
 import { User } from '@/database/entities/User.ts';
 import { Package } from '@/database/entities/Package.ts';
 
-@Entity('messages')
-@Index('idx_messages_user_id', ['user_id'])
-@Index('idx_messages_package_id', ['package_id'])
-export class Message {
+@Entity('notifications')
+@Index('idx_notifications_user_id', ['user_id'])
+@Index('idx_notifications_package_id', ['package_id'])
+export class Notification {
   @PrimaryGeneratedColumn({ type: 'int' })
   id!: number;
 
@@ -41,14 +41,14 @@ export class Message {
   @CreateDateColumn()
   created_at!: Date;
 
-  @ManyToOne(() => User, (user) => user.messages, {
+  @ManyToOne(() => User, (user) => user.notifications, {
     onDelete: 'RESTRICT',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
   user!: User;
 
-  @ManyToOne(() => Package, (pkg) => pkg.messages, {
+  @ManyToOne(() => Package, (pkg) => pkg.notifications, {
     onDelete: 'RESTRICT',
     onUpdate: 'CASCADE',
   })
