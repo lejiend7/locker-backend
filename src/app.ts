@@ -1,8 +1,9 @@
 import 'reflect-metadata';
-import express, { Express } from 'express';
+import express, { type Express } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { corsMiddleware } from '@/middleware/corsMiddleware.ts';
+import router from '@/routes/index.ts';
 import { routeService } from '@/services/routeService.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,7 +18,11 @@ export const createApp = (): Express => {
   corsMiddleware.mount(app);
   app.use(express.static(path.join(__dirname, 'public')));
 
-  routeService.mount(app);
+  app.use('/', router);
+  app.use('/api', router);
+
+  routeService.mountApiNotFound(app);
+  routeService.mountErrorHandler(app);
 
   return app;
 };

@@ -10,20 +10,22 @@ const stationRepository: StationRepositoryInterface = new StationRepository(AppD
 
 export class StationController {
   list = asyncHandler((req: Request, res: Response) => this.handleList(req, res));
+  agentList = asyncHandler((req: Request, res: Response) => this.handleAgentList(req, res));
 
-  private async handleList(req: Request, res: Response) {
-    if (!req.authUser || req.authUser.role !== 'admin') {
-      return res.status(403).json(
-        buildApiResponse({
-          success: false,
-          statusCode: 403,
-          message: 'Admin access required',
-          data: [],
-          errors: ['Admin access required'],
-        })
-      );
-    }
+  private async handleList(_req: Request, res: Response) {
+    const stations = await stationRepository.findAll();
 
+    return res.status(200).json(
+      buildApiResponse({
+        success: true,
+        statusCode: 200,
+        message: 'Stations fetched successfully',
+        data: stations,
+      })
+    );
+  }
+
+  private async handleAgentList(_req: Request, res: Response) {
     const stations = await stationRepository.findAll();
 
     return res.status(200).json(
