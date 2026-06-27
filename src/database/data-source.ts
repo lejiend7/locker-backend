@@ -5,7 +5,7 @@ import { Station } from './entities/Station.ts';
 import { Locker } from './entities/Locker.ts';
 import { User } from './entities/User.ts';
 import { Package } from './entities/Package.ts';
-import { Message } from './entities/Message.ts';
+import { Notification } from './entities/Notification.ts';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
@@ -16,7 +16,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || '',
   synchronize: false,
   logging: false,
-  entities: [Station, Locker, User, Package, Message],
+  entities: [Station, Locker, User, Package, Notification],
   migrations: process.env.NODE_ENV === 'test' ? [] : ['src/database/migrations/*.ts'],
   migrationsTableName: 'migrations',
 });

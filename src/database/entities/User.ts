@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, Unique } from 'typeorm';
 import { Package } from '@/database/entities/Package.ts';
-import { Message } from '@/database/entities/Message.ts';
+import { Notification } from '@/database/entities/Notification.ts';
 
 @Entity('users')
 @Unique(['email'])
@@ -29,6 +29,6 @@ export class User {
   @OneToMany(() => Package, (pkg) => pkg.agent)
   assignedPackages!: Package[];
 
-  @OneToMany(() => Message, (msg) => msg.user)
-  messages!: Message[];
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications!: Notification[];
 }

@@ -22,6 +22,6 @@ router.get('/agent/stations', authMiddleware, stationController.agentList).role(
 router.get('/lockers', authMiddleware, lockerController.list).role(['admin', 'delivery_agent']);
 router.post('/lockers', authMiddleware, lockerController.create).role(['admin']);
 router.get('/packages', authMiddleware, packageController.list).role(['delivery_agent']);
-router.post('/packages/assign-locker', authMiddleware, packageController.assignLocker).role(['delivery_agent']);
+router.put('/packages/assign-locker', authMiddleware, packageController.assignLocker).role(['delivery_agent']);
 
 export default router.toExpressRouter();

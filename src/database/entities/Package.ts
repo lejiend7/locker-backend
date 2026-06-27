@@ -11,7 +11,7 @@ import {
 } from 'typeorm';
 import { Locker } from '@/database/entities/Locker.ts';
 import { User } from '@/database/entities/User.ts';
-import { Message } from '@/database/entities/Message.ts';
+import { Notification } from '@/database/entities/Notification.ts';
 
 export type PackageSize = 'small' | 'medium' | 'large';
 export type DeliveryStatus = 'ASSIGNED_TO_AGENT' | 'READY_TO_PICK' | 'PICKED';
@@ -92,6 +92,6 @@ export class Package {
   @JoinColumn({ name: 'agent_id' })
   agent!: User | null;
 
-  @OneToMany(() => Message, (msg) => msg.package)
-  messages!: Message[];
+  @OneToMany(() => Notification, (notification) => notification.package)
+  notifications!: Notification[];
 }

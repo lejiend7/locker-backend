@@ -67,7 +67,7 @@ CREATE TABLE packages (
     ON UPDATE CASCADE
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-CREATE TABLE messages (
+CREATE TABLE notifications (
   id VARCHAR(191) NOT NULL,
   user_id VARCHAR(191) NOT NULL,
   package_id VARCHAR(191) NOT NULL,
@@ -78,14 +78,14 @@ CREATE TABLE messages (
   is_read BOOLEAN NOT NULL DEFAULT FALSE,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (id),
-  INDEX idx_messages_user_id (user_id),
-  INDEX idx_messages_package_id (package_id),
-  CONSTRAINT messages_user_id_fkey
+  INDEX idx_notifications_user_id (user_id),
+  INDEX idx_notifications_package_id (package_id),
+  CONSTRAINT notifications_user_id_fkey
     FOREIGN KEY (user_id)
     REFERENCES users(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE,
-  CONSTRAINT messages_package_id_fkey
+  CONSTRAINT notifications_package_id_fkey
     FOREIGN KEY (package_id)
     REFERENCES packages(id)
     ON DELETE RESTRICT

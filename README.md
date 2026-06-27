@@ -376,7 +376,7 @@ Current route layout:
 | GET | /lockers | authMiddleware | admin, delivery_agent | lockerController.list |
 | POST | /lockers | authMiddleware | admin | lockerController.create |
 | GET | /packages | authMiddleware | delivery_agent | packageController.list |
-| POST | /packages/assign-locker | authMiddleware | delivery_agent | packageController.assignLocker |
+| PUT | /packages/assign-locker | authMiddleware | delivery_agent | packageController.assignLocker |
 
 Routing principles used:
 
@@ -416,7 +416,7 @@ router.get('/agent/stations', authMiddleware, stationController.agentList).role(
 router.get('/lockers', authMiddleware, lockerController.list).role(['admin', 'delivery_agent']);
 router.post('/lockers', authMiddleware, lockerController.create).role(['admin']);
 router.get('/packages', authMiddleware, packageController.list).role(['delivery_agent']);
-router.post('/packages/assign-locker', authMiddleware, packageController.assignLocker).role(['delivery_agent']);
+router.put('/packages/assign-locker', authMiddleware, packageController.assignLocker).role(['delivery_agent']);
 
 export default router.toExpressRouter();
 ```
