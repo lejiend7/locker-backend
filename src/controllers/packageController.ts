@@ -1,6 +1,7 @@
 import { type Request, type Response } from 'express';
 import { PackageRepositoryInterface } from '@/database/repositories/interfaces/PackageRepositoryInterface.ts';
 import { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.ts';
+import { NotificationRepositoryInterface } from '@/database/repositories/interfaces/NotificationRepositoryInterface.ts';
 import { PackageServiceInterface } from '@/services/interfaces/PackageServiceInterface.ts';
 import { StoragePriceServiceInterface } from '@/services/interfaces/StoragePriceServiceInterface.ts';
 import { AssignLockerDto } from '@/dtos/assignLockerDto.ts';
@@ -8,18 +9,31 @@ import { StorePackageDto } from '@/dtos/storePackageDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
-function generatePickupCode(packageId: number): string {
-  const token = `${packageId}${Date.now()}`.slice(-6);
-  return `PK${token}`.toUpperCase();
+function generateRandomNineDigitCode(): string {
+  return Math.floor(100000000 + Math.random() * 900000000).toString();
 }
 
 export class PackageController {
   constructor(
     private readonly packageRepository: PackageRepositoryInterface,
     private readonly lockerRepository: LockerRepositoryInterface,
+    private readonly notificationRepository: NotificationRepositoryInterface,
     private readonly packageService: PackageServiceInterface,
     private readonly storagePriceService: StoragePriceServiceInterface,
   ) {}
+
+  private async generateUniquePickupCode(): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const candidate = generateRandomNineDigitCode();
+      const existing = await this.packageRepository.findByPickupCode(candidate);
+
+      if (!existing) {
+        return candidate;
+      }
+    }
+
+    return `${Date.now()}`.slice(-9);
+  }
 
   list = asyncHandler((req: Request, res: Response) => this.handleList(req, res));
   assignLocker = asyncHandler((req: Request, res: Response) => this.handleAssignLocker(req, res));
@@ -45,7 +59,7 @@ export class PackageController {
       locker_id: pkg.locker_id,
       customer_id: pkg.customer_id,
       agent_id: pkg.agent_id,
-      customer_name: pkg.customer_name,
+      customer_name: pkg.customer?.name ?? pkg.customer_name,
       package_size: pkg.package_size,
       pickup_code: pkg.pickup_code,
       delivery_status: pkg.delivery_status,
@@ -360,13 +374,23 @@ export class PackageController {
     const storedAt = validation.value.storedAt ? new Date(validation.value.storedAt) : new Date();
     const now = new Date();
     const storagePrice = this.storagePriceService.calculateStoragePrice(storedAt, now);
-    const pickupCode = pkg.pickup_code ?? generatePickupCode(pkg.id);
+    const pickupCode = pkg.pickup_code ?? await this.generateUniquePickupCode();
 
     await this.packageRepository.update(pkg.id, {
       delivery_status: 'READY_TO_PICK',
       stored_at: storedAt,
       pickup_code: pickupCode,
       storage_price: storagePrice,
+    } as any);
+
+    await this.notificationRepository.create({
+      user_id: pkg.customer_id,
+      package_id: pkg.id,
+      title: 'Package ready for pickup',
+      body: `Your package is ready. Locker ${locker?.label ?? pkg.locker_id} with pickup code ${pickupCode}.`,
+      locker_label: locker?.label ?? String(pkg.locker_id),
+      pickup_code: pickupCode,
+      is_read: false,
     } as any);
 
     return res.status(200).json(

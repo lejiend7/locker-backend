@@ -1,8 +1,12 @@
 import { Repository } from 'typeorm';
 import { Notification } from '@/database/entities/Notification.ts';
 import { BaseRepository } from '@/database/repositories/BaseRepository.ts';
+import { NotificationRepositoryInterface } from '@/database/repositories/interfaces/NotificationRepositoryInterface.ts';
 
-export class NotificationRepository extends BaseRepository<Notification> {
+export class NotificationRepository
+  extends BaseRepository<Notification>
+  implements NotificationRepositoryInterface
+{
   constructor(repository: Repository<Notification>) {
     super(repository);
   }

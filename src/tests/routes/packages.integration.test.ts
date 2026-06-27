@@ -135,7 +135,7 @@ describe('packages route integration', () => {
       expect.objectContaining({
         packageCode: expect.any(String),
         deliveryStatus: 'ASSIGNED_TO_AGENT',
-        customerName: 'Available Customer',
+        customerName: customer.name,
         agentId: agent.id,
         customer: expect.objectContaining({
           id: customer.id,
@@ -148,7 +148,7 @@ describe('packages route integration', () => {
       }),
     ]));
     expect(res.body.data).not.toEqual(expect.arrayContaining([
-      expect.objectContaining({ customerName: 'Other Agent Available Customer' }),
+      expect.objectContaining({ agentId: otherAgent.id }),
     ]));
   });
 
@@ -229,7 +229,7 @@ describe('packages route integration', () => {
     expect(res.body.data).toEqual(expect.arrayContaining([
       expect.objectContaining({
         deliveryStatus: 'PICKED',
-        customerName: 'Delivered Customer',
+        customerName: customer.name,
         agentId: agent.id,
         locker: expect.objectContaining({
           id: locker.id,
@@ -240,7 +240,7 @@ describe('packages route integration', () => {
       }),
     ]));
     expect(res.body.data).not.toEqual(expect.arrayContaining([
-      expect.objectContaining({ customerName: 'Other Agent Delivered Customer' }),
+      expect.objectContaining({ agentId: otherAgent.id }),
     ]));
   });
 });
