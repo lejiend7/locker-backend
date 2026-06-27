@@ -1,6 +1,6 @@
 # SmartLocker Backend API
 
-A Node.js/Express backend for the SmartLocker package management system. It uses **TypeScript**, **Express**, **TypeORM**, **MySQL**, **JWT-based auth**, and **Vitest** to support a modular API with controllers, middleware, services, repositories, and tests.
+A Node.js/Express backend for the SmartLocker package management system. It uses **TypeScript**, **Express 5**, **TypeORM**, **MySQL**, **JWT-based auth**, **Vitest**, and **tsx** to support a modular API with controllers, middleware, services, repositories, and tests.
 
 ## 🎯 Assignment Focus: Architectural Patterns Implemented
 
@@ -45,15 +45,16 @@ This backend is designed around a clean layered architecture and follows modern 
 
 | Technology | Purpose |
 |-----------|---------|
-| **Node.js** | Runtime |
-| **Express.js** | HTTP server framework |
-| **TypeScript** | Type-safe application layer |
-| **TypeORM** | ORM and database migrations |
-| **MySQL** | Relational database |
+| **Node.js 18+** | Runtime |
+| **Express 5** | HTTP server framework |
+| **TypeScript / NodeNext** | Type-safe application layer and module resolution |
+| **TypeORM** | ORM, entities, and database migrations |
+| **MySQL 8** | Relational database |
 | **jsonwebtoken** | JWT authentication |
 | **bcryptjs** | Password hashing |
 | **Vitest** | Unit and integration testing |
-| **tsx** | TypeScript execution and dev server |
+| **tsx** | TypeScript execution and watch mode |
+| **GitHub Actions** | CI/CD automation |
 
 ---
 
@@ -64,6 +65,7 @@ src/
 ├── app.ts                           # Express app factory
 ├── server.ts                        # Server entrypoint
 ├── controllers/                     # HTTP request handlers
+├── dtos/                            # Request validation DTOs 
 ├── middleware/                      # Auth, guest, CORS, and other middleware
 ├── routes/                          # Route registration
 ├── services/                        # Business logic layer
@@ -79,6 +81,8 @@ src/
 
 dist/                                # Compiled JavaScript output
 tsconfig.json                        # TypeScript compiler configuration
+vitest.config.ts                     # Vitest configuration
+.github/workflows/                   # GitHub Actions CI/CD workflows
 ```
 
 ---
@@ -355,27 +359,31 @@ Foreign keys use `ON DELETE RESTRICT` and `ON UPDATE CASCADE` for data integrity
 
 ## 🧭 Clean Route Map
 
-The backend uses one centralized router in [src/routes/index.ts](src/routes/index.ts), mounted by [src/services/routeService.ts](src/services/routeService.ts) at both `/` and `/api` for flexible local and API-prefixed access.
+The backend uses one centralized router in [src/routes/index.ts](src/routes/index.ts). Route registration is handled by [src/services/routeService.ts](src/services/routeService.ts), which supports role-aware chaining with `.role([...])` and delegates authorization checks to [src/services/roleService.ts](src/services/roleService.ts).
 
 Current route layout:
 
-| Method | Path | Middleware | Controller |
-|---|---|---|---|
-| GET | / | guestMiddleware | landingController.index |
-| GET | /health | guestMiddleware | healthController.index |
-| POST | /auth/signup | guestMiddleware | authController.signup |
-| POST | /auth/signup/admin | guestMiddleware | authController.signupAdmin |
-| POST | /auth/login | guestMiddleware | authController.login |
-| GET | /auth/session | authMiddleware | authController.session |
-| GET | /stations | authMiddleware | stationController.list |
-| GET | /lockers | authMiddleware | lockerController.list |
-| POST | /lockers | authMiddleware | lockerController.create |
+| Method | Path | Middleware | Role | Controller |
+|---|---|---|---|---|
+| GET | / | guestMiddleware | public | landingController.index |
+| GET | /health | guestMiddleware | public | healthController.index |
+| POST | /auth/signup | guestMiddleware | public | authController.signup |
+| POST | /auth/signup/admin | guestMiddleware | public | authController.signupAdmin |
+| POST | /auth/login | guestMiddleware | public | authController.login |
+| GET | /auth/session | authMiddleware | authenticated | authController.session |
+| GET | /stations | authMiddleware | admin | stationController.list |
+| GET | /agent/stations | authMiddleware | delivery_agent | stationController.agentList |
+| GET | /lockers | authMiddleware | admin, delivery_agent | lockerController.list |
+| POST | /lockers | authMiddleware | admin | lockerController.create |
+| GET | /packages | authMiddleware | delivery_agent | packageController.list |
+| POST | /packages/assign-locker | authMiddleware | delivery_agent | packageController.assignLocker |
 
 Routing principles used:
 
 - One route registration file for predictable endpoint discovery.
 - Middleware is applied per route so access rules stay explicit.
-- Route mounting, API 404 fallback, and global error handling are centralized in RouteService.
+- Role authorization is declared at route level via `.role([...])`, not inside controllers.
+- Route mounting, API 404 fallback, and global error handling are handled in [src/app.ts](src/app.ts).
 - Controllers remain thin and delegate business logic to services.
 
 ### Route Code Sample
@@ -383,16 +391,17 @@ Routing principles used:
 Main router sample from `src/routes/index.ts`:
 
 ```ts
-import { Router } from 'express';
 import { authController } from '@/controllers/authController.ts';
 import { healthController } from '@/controllers/healthController.ts';
 import { landingController } from '@/controllers/landingController.ts';
 import { stationController } from '@/controllers/stationController.ts';
 import { lockerController } from '@/controllers/lockerController.ts';
+import { packageController } from '@/controllers/packageController.ts';
 import { authMiddleware } from '@/middleware/authMiddleware.ts';
 import { guestMiddleware } from '@/middleware/guestMiddleware.ts';
+import { routeService } from '@/services/routeService.ts';
 
-const router = Router();
+const router = routeService;
 
 router.get('/', guestMiddleware, landingController.index);
 router.get('/health', guestMiddleware, healthController.index);
@@ -402,20 +411,41 @@ router.post('/auth/signup/admin', guestMiddleware, authController.signupAdmin);
 router.post('/auth/login', guestMiddleware, authController.login);
 router.get('/auth/session', authMiddleware, authController.session);
 
-router.get('/stations', authMiddleware, stationController.list);
-router.get('/lockers', authMiddleware, lockerController.list);
-router.post('/lockers', authMiddleware, lockerController.create);
+router.get('/stations', authMiddleware, stationController.list).role(['admin']);
+router.get('/agent/stations', authMiddleware, stationController.agentList).role(['delivery_agent']);
+router.get('/lockers', authMiddleware, lockerController.list).role(['admin', 'delivery_agent']);
+router.post('/lockers', authMiddleware, lockerController.create).role(['admin']);
+router.get('/packages', authMiddleware, packageController.list).role(['delivery_agent']);
+router.post('/packages/assign-locker', authMiddleware, packageController.assignLocker).role(['delivery_agent']);
 
-export default router;
+export default router.toExpressRouter();
 ```
 
-Route mounting sample from `src/services/routeService.ts`:
+Role-aware route service sample from `src/services/routeService.ts`:
 
 ```ts
-import router from '@/routes/index.ts';
+type RoleChain = {
+  role: (roles: AppRole[]) => RouteService;
+};
 
-app.use('/', router);
-app.use('/api', router);
+get(path: string, ...handlers: RequestHandler[]): RoleChain {
+  return this.register('get', path, handlers);
+}
+
+private injectRoleGuard(handlers: RequestHandler[], allowedRoles: AppRole[]): RequestHandler[] {
+  const authIndex = handlers.findIndex((handler) => handler === authMiddleware);
+  const guard = roleService.createRoleGuard(allowedRoles);
+
+  if (authIndex === -1) {
+    return [guard, ...handlers];
+  }
+
+  return [
+    ...handlers.slice(0, authIndex + 1),
+    guard,
+    ...handlers.slice(authIndex + 1),
+  ];
+}
 ```
 
 ### Request Lifecycle (End-to-End)
@@ -478,12 +508,12 @@ This standardization is intentional so the frontend can work with one consistent
 1. **Client sends an HTTP request** to the Express server.
 2. The app bootstrap in [src/app.ts](src/app.ts) initializes the Express app and applies core middleware such as JSON parsing and static file serving.
 3. The CORS middleware in [src/middleware/corsMiddleware.ts](src/middleware/corsMiddleware.ts) runs first for cross-origin requests, adds the required headers, and handles preflight `OPTIONS` requests.
-4. The route layer in [src/services/routeService.ts](src/services/routeService.ts) mounts the router and registers the API 404 fallback plus the centralized error handler.
+4. The route layer in [src/routes/index.ts](src/routes/index.ts) resolves endpoints, while [src/services/routeService.ts](src/services/routeService.ts) injects role guards for routes using `.role([...])`.
 5. The request is matched in [src/routes/index.ts](src/routes/index.ts), where route-specific middleware such as guest or auth checks run before the controller.
 6. The controller in [src/controllers](src/controllers) handles the request, validates the context, and delegates business logic to the appropriate service.
 7. The service uses repositories and database entities in [src/database](src/database) to read or write data.
 8. The response is returned in the shared API envelope through [src/utils/response.ts](src/utils/response.ts).
-9. If something fails, the error is passed through the route service error middleware and normalized into a consistent API error response.
+9. If something fails, the error is passed through the global error middleware in [src/app.ts](src/app.ts) and normalized into a consistent API error response.
 
 A simple example flow for an authenticated request looks like this:
 
@@ -491,7 +521,7 @@ A simple example flow for an authenticated request looks like this:
 HTTP Request
   -> app.ts
   -> corsMiddleware
-  -> routeService.mount(app)
+  -> app route mount (/ and /api)
   -> routes/index.ts
   -> authMiddleware / guestMiddleware
   -> controller

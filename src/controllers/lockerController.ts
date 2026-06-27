@@ -14,21 +14,14 @@ export class LockerController {
   create = asyncHandler((req: Request, res: Response) => this.handleCreate(req, res));
 
   private async handleList(req: Request, res: Response) {
-    if (!req.authUser || req.authUser.role !== 'admin') {
-      return res.status(403).json(
-        buildApiResponse({
-          success: false,
-          statusCode: 403,
-          message: 'Admin access required',
-          data: [],
-          errors: ['Admin access required'],
-        })
-      );
-    }
+    const stationIdQuery = typeof req.query.stationId === 'string' && req.query.stationId.length > 0
+      ? req.query.stationId
+      : typeof req.query.station === 'string' && req.query.station.length > 0
+        ? req.query.station
+        : null;
 
-    const stationId = req.query.stationId;
-    const lockers = typeof stationId === 'string' && stationId.length > 0
-      ? await lockerRepository.findByStationId(Number(stationId))
+    const lockers = stationIdQuery
+      ? await lockerRepository.findByStationId(Number(stationIdQuery))
       : await lockerRepository.findAll();
 
     return res.status(200).json(
@@ -42,18 +35,6 @@ export class LockerController {
   }
 
   private async handleCreate(req: Request, res: Response) {
-    if (!req.authUser || req.authUser.role !== 'admin') {
-      return res.status(403).json(
-        buildApiResponse({
-          success: false,
-          statusCode: 403,
-          message: 'Admin access required',
-          data: [],
-          errors: ['Admin access required'],
-        })
-      );
-    }
-
     const validation = CreateLockerDto.validate(req.body ?? {});
 
     if (!validation.isValid) {
