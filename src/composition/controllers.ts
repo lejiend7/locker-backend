@@ -3,14 +3,17 @@ import { User } from '@/database/entities/User.ts';
 import { Station } from '@/database/entities/Station.ts';
 import { Locker } from '@/database/entities/Locker.ts';
 import { Package } from '@/database/entities/Package.ts';
+import { Notification } from '@/database/entities/Notification.ts';
 import { UserRepository } from '@/database/repositories/UserRepository.ts';
 import { StationRepository } from '@/database/repositories/StationRepository.ts';
 import { LockerRepository } from '@/database/repositories/LockerRepository.ts';
 import { PackageRepository } from '@/database/repositories/PackageRepository.ts';
+import { NotificationRepository } from '@/database/repositories/NotificationRepository.ts';
 import type { UserRepositoryInterface } from '@/database/repositories/interfaces/UserRepositoryInterface.ts';
 import type { StationRepositoryInterface } from '@/database/repositories/interfaces/StationRepositoryInterface.ts';
 import type { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.ts';
 import type { PackageRepositoryInterface } from '@/database/repositories/interfaces/PackageRepositoryInterface.ts';
+import type { NotificationRepositoryInterface } from '@/database/repositories/interfaces/NotificationRepositoryInterface.ts';
 import { AuthService } from '@/services/authService.ts';
 import { HealthService } from '@/services/healthService.ts';
 import { LandingPageService } from '@/services/landingPageService.ts';
@@ -33,6 +36,9 @@ const userRepository: UserRepositoryInterface = new UserRepository(AppDataSource
 const stationRepository: StationRepositoryInterface = new StationRepository(AppDataSource.getRepository(Station));
 const lockerRepository: LockerRepositoryInterface = new LockerRepository(AppDataSource.getRepository(Locker));
 const packageRepository: PackageRepositoryInterface = new PackageRepository(AppDataSource.getRepository(Package));
+const notificationRepository: NotificationRepositoryInterface = new NotificationRepository(
+  AppDataSource.getRepository(Notification),
+);
 
 const authService: AuthServiceInterface = new AuthService(userRepository, jwtSecret);
 const healthService: HealthServiceInterface = new HealthService();
@@ -51,6 +57,7 @@ export const lockerController = new LockerController(lockerRepository);
 export const packageController = new PackageController(
   packageRepository,
   lockerRepository,
+  notificationRepository,
   packageService,
   storagePriceService,
 );

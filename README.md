@@ -2,24 +2,30 @@
 
 A Node.js/Express backend for the SmartLocker package management system. It uses **TypeScript**, **Express 5**, **TypeORM**, **MySQL**, **JWT-based auth**, **Vitest**, and **tsx** to support a modular API with controllers, middleware, services, repositories, and tests.
 
-## 🎯 Assignment Focus: Architectural Patterns Implemented
+## 🎯 Assignment Focus: Design Patterns Implemented
 
-This backend is designed around a clean layered architecture and follows modern software design practices for assignment purposes:
+This backend currently applies 7 design patterns and architectural patterns in production code:
 
-- **Unit and Integration Testing**: the project includes both unit tests for isolated logic and integration tests for real database and HTTP flows.
-- **Repository Pattern**: data access is encapsulated in repository classes, keeping business logic separate from database concerns.
-- **Interface-Based Design**: services and repositories expose contracts through interfaces, which improves flexibility and testability.
-- **SOLID Principles**: the codebase is structured to follow the Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, and Dependency Inversion principles.
-- **Dependency Injection / Dependency Inversion**: services and controllers depend on abstractions (interfaces) rather than hard-coding concrete implementations.
-- **Layered Separation of Concerns**: controllers handle HTTP flow, services handle business logic, and repositories handle persistence.
+1. **Repository Pattern**: encapsulates data access in repository classes for users, stations, lockers, packages, and notifications.
+  Reference: [src/database/repositories/BaseRepository.ts](src/database/repositories/BaseRepository.ts), [src/database/repositories/NotificationRepository.ts](src/database/repositories/NotificationRepository.ts)
+2. **Service Layer Pattern**: keeps business rules inside services, while controllers stay focused on HTTP flow.
+  Reference: [src/services/authService.ts](src/services/authService.ts), [src/services/packageService.ts](src/services/packageService.ts)
+3. **Data Transfer Object (DTO) Pattern**: validates and normalizes request payloads before business logic runs.
+  Reference: [src/dtos/loginDto.ts](src/dtos/loginDto.ts), [src/dtos/storePackageDto.ts](src/dtos/storePackageDto.ts)
+4. **Dependency Injection Pattern**: dependencies are passed through constructors instead of being created inside controllers.
+  Reference: [src/controllers/authController.ts](src/controllers/authController.ts), [src/controllers/packageController.ts](src/controllers/packageController.ts)
+5. **Composition Root Pattern**: concrete wiring is centralized in src/composition/controllers.ts.
+  Reference: [src/composition/controllers.ts](src/composition/controllers.ts)
+6. **Interface-Based Design (Ports and Contracts)**: controllers and services depend on interfaces, enabling easier testing and substitution.
+  Reference: [src/services/interfaces/AuthServiceInterface.ts](src/services/interfaces/AuthServiceInterface.ts), [src/database/repositories/interfaces/PackageRepositoryInterface.ts](src/database/repositories/interfaces/PackageRepositoryInterface.ts)
+7. **Fluent Route Builder Pattern**: route registration uses chained role-aware declarations via routeService and .role([...]).
+  Reference: [src/services/routeService.ts](src/services/routeService.ts), [src/routes/route.ts](src/routes/route.ts)
 
-### Patterns already implemented
+Supporting engineering practices used with these patterns:
 
-- Repository pattern for entities such as stations, lockers, users, packages, and messages.
-- Interface-based contracts for services and repositories.
-- Service abstractions for reusable business capability such as locker availability.
-- Dependency inversion through constructor-based dependencies and interface typing.
-- A modular controller-service-repository structure that is easier to extend and test.
+- Unit and integration testing with Vitest.
+- SOLID principles applied across controller, service, and repository boundaries.
+- Layered separation of concerns across route, controller, service, and repository layers.
 
 ## 📋 Table of Contents
 
@@ -64,6 +70,7 @@ This backend is designed around a clean layered architecture and follows modern 
 src/
 ├── app.ts                           # Express app factory
 ├── server.ts                        # Server entrypoint
+├── composition/                     # Concrete dependency wiring (composition root)
 ├── controllers/                     # HTTP request handlers
 ├── dtos/                            # Request validation DTOs 
 ├── middleware/                      # Auth, guest, CORS, and other middleware
@@ -301,7 +308,7 @@ Docker images are configured in:
 
 ## 📚 API Reference
 
-Full API specification is in [ERD_README.md](./ERD_README.md), including:
+Full API specification is documented in this README and the backend source contracts, including:
 
 - **Entity Relationship Diagram** — Database schema
 - **Entity Specifications** — Field types, constraints, examples
@@ -352,8 +359,8 @@ const station = await customStationRepo.findByCity('Petaling Jaya');
 - **Station** → Locker (1:many)
 - **Locker** → Package (1:many)
 - **User** → Package (1:many)
-- **User** → Message (1:many)
-- **Package** → Message (1:many)
+- **User** → Notification (1:many)
+- **Package** → Notification (1:many)
 
 Foreign keys use `ON DELETE RESTRICT` and `ON UPDATE CASCADE` for data integrity.
 
@@ -392,12 +399,14 @@ Routing principles used:
 Main router sample from `src/routes/route.ts`:
 
 ```ts
-import { authController } from '@/controllers/authController.ts';
-import { healthController } from '@/controllers/healthController.ts';
-import { landingController } from '@/controllers/landingController.ts';
-import { stationController } from '@/controllers/stationController.ts';
-import { lockerController } from '@/controllers/lockerController.ts';
-import { packageController } from '@/controllers/packageController.ts';
+import {
+  authController,
+  healthController,
+  landingController,
+  stationController,
+  lockerController,
+  packageController,
+} from '@/composition/controllers.ts';
 import { authMiddleware } from '@/middleware/authMiddleware.ts';
 import { guestMiddleware } from '@/middleware/guestMiddleware.ts';
 import { routeService } from '@/services/routeService.ts';
@@ -422,6 +431,12 @@ router.put('/packages/store', authMiddleware, packageController.store).role(['de
 
 export default router.toExpressRouter();
 ```
+
+### Dependency Injection and Composition Root
+
+The backend uses constructor injection with interface contracts in controllers and services. Concrete repositories and services are created once in `src/composition/controllers.ts`, then injected into controller constructors.
+
+This keeps controller files focused on HTTP flow only and centralizes dependency wiring in one module.
 
 Role-aware route service sample from `src/services/routeService.ts`:
 
@@ -556,7 +571,7 @@ This structure makes the backend easy to follow: middleware handles cross-cuttin
 
 ### Architecture Diagram
 
-![Locker Backend Architecture](./src/public/Smart%20Locker%20Backend%20Structure.drawio.png)
+![Locker Backend Architecture](./src/public/Smart Locker Backend Structure.drawio.png)
 
 ---
 
