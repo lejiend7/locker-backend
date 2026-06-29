@@ -18,12 +18,15 @@ import { AuthService } from '@/services/authService.ts';
 import { HealthService } from '@/services/healthService.ts';
 import { LandingPageService } from '@/services/landingPageService.ts';
 import { PackageService } from '@/services/packageService.ts';
+import { AdminUserService } from '@/services/adminUserService.ts';
 import { storagePriceService } from '@/services/storagePriceService.ts';
 import type { AuthServiceInterface } from '@/services/interfaces/AuthServiceInterface.ts';
+import type { AdminUserServiceInterface } from '@/services/interfaces/AdminUserServiceInterface.ts';
 import type { HealthServiceInterface } from '@/services/interfaces/HealthServiceInterface.ts';
 import type { LandingPageServiceInterface } from '@/services/interfaces/LandingPageServiceInterface.ts';
 import type { PackageServiceInterface } from '@/services/interfaces/PackageServiceInterface.ts';
 import { AuthController } from '@/controllers/authController.ts';
+import { AdminUserController } from '@/controllers/adminUserController.ts';
 import { HealthController } from '@/controllers/healthController.ts';
 import { LandingController } from '@/controllers/landingController.ts';
 import { StationController } from '@/controllers/stationController.ts';
@@ -41,6 +44,7 @@ const notificationRepository: NotificationRepositoryInterface = new Notification
 );
 
 const authService: AuthServiceInterface = new AuthService(userRepository, jwtSecret);
+const adminUserService: AdminUserServiceInterface = new AdminUserService(userRepository);
 const healthService: HealthServiceInterface = new HealthService();
 const landingPageService: LandingPageServiceInterface = new LandingPageService();
 const packageService: PackageServiceInterface = new PackageService(
@@ -50,6 +54,7 @@ const packageService: PackageServiceInterface = new PackageService(
 );
 
 export const authController = new AuthController(authService);
+export const adminUserController = new AdminUserController(adminUserService);
 export const healthController = new HealthController(healthService);
 export const landingController = new LandingController(landingPageService);
 export const stationController = new StationController(stationRepository);
