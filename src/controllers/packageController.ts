@@ -1,4 +1,5 @@
 import { type Request, type Response } from 'express';
+import type { Package as PackageEntity } from '@/database/entities/Package.ts';
 import { PackageRepositoryInterface } from '@/database/repositories/interfaces/PackageRepositoryInterface.ts';
 import { LockerRepositoryInterface } from '@/database/repositories/interfaces/LockerRepositoryInterface.ts';
 import { NotificationRepositoryInterface } from '@/database/repositories/interfaces/NotificationRepositoryInterface.ts';
@@ -6,12 +7,61 @@ import { PackageServiceInterface } from '@/services/interfaces/PackageServiceInt
 import { StoragePriceServiceInterface } from '@/services/interfaces/StoragePriceServiceInterface.ts';
 import { AssignLockerDto } from '@/dtos/assignLockerDto.ts';
 import { StorePackageDto } from '@/dtos/storePackageDto.ts';
+import { UnlockLockerDto } from '@/dtos/unlockLockerDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
 import { buildApiResponse } from '@/utils/response.ts';
 
 function generateRandomNineDigitCode(): string {
   return Math.floor(100000000 + Math.random() * 900000000).toString();
 }
+
+type PackageSummary = {
+  id: number;
+  package_code: string;
+  locker_id: number | null;
+  customer_id: number;
+  agent_id: number | null;
+  customer_name: string;
+  package_size: PackageEntity['package_size'];
+  pickup_code: string | null;
+  delivery_status: PackageEntity['delivery_status'];
+  assigned_at: Date;
+  stored_at: Date | null;
+  retrieved_at: Date | null;
+  storage_price: number | null;
+  created_at: Date;
+  locker_label: string | null;
+  station_name: string | null;
+  station_address: string | null;
+  locker: unknown;
+  customer: unknown;
+  agent: unknown;
+};
+
+type BillTierBreakdown = {
+  tier: 1 | 2 | 3;
+  label: string;
+  from_day: number;
+  to_day: number | null;
+  charged_days: number;
+  rate_per_day: number;
+  amount: number;
+};
+
+type CustomerBillSummary = {
+  package_id: number;
+  package_code: string;
+  locker_id: number | null;
+  locker_label: string | null;
+  station_name: string | null;
+  station_address: string | null;
+  stored_at: Date;
+  retrieved_at: Date;
+  billable_days: number;
+  calculated_storage_price: number;
+  recorded_storage_price: number | null;
+  tier_breakdown: BillTierBreakdown[];
+};
 
 export class PackageController {
   constructor(
@@ -36,24 +86,86 @@ export class PackageController {
   }
 
   list = asyncHandler((req: Request, res: Response) => this.handleList(req, res));
+  customerList = asyncHandler((req: Request, res: Response) => this.handleCustomerList(req, res));
+  customerBills = asyncHandler((req: Request, res: Response) => this.handleCustomerBills(req, res));
   assignLocker = asyncHandler((req: Request, res: Response) => this.handleAssignLocker(req, res));
   store = asyncHandler((req: Request, res: Response) => this.handleStore(req, res));
+  unlock = asyncHandler((req: Request, res: Response) => this.handleUnlock(req, res));
+  confirmRetrieve = asyncHandler((req: Request, res: Response) => this.handleConfirmRetrieve(req, res));
 
-  private async handleList(req: Request, res: Response) {
-    if (!req.authUser) {
-      return res.status(401).json(
-        buildApiResponse({
-          success: false,
-          statusCode: 401,
-          message: 'Unauthorized',
-          data: [],
-          errors: ['Unauthorized'],
-        })
-      );
+  private buildTierBreakdown(days: number): BillTierBreakdown[] {
+    const tier1Days = Math.min(days, 5);
+    const tier2Days = Math.min(Math.max(days - 5, 0), 5);
+    const tier3Days = Math.max(days - 10, 0);
+
+    return [
+      {
+        tier: 1,
+        label: 'Day 1-5',
+        from_day: 1,
+        to_day: 5,
+        charged_days: tier1Days,
+        rate_per_day: 1,
+        amount: Number((tier1Days * 1).toFixed(2)),
+      },
+      {
+        tier: 2,
+        label: 'Day 6-10',
+        from_day: 6,
+        to_day: 10,
+        charged_days: tier2Days,
+        rate_per_day: 2,
+        amount: Number((tier2Days * 2).toFixed(2)),
+      },
+      {
+        tier: 3,
+        label: 'Day 11+',
+        from_day: 11,
+        to_day: null,
+        charged_days: tier3Days,
+        rate_per_day: 3,
+        amount: Number((tier3Days * 3).toFixed(2)),
+      },
+    ];
+  }
+
+  private summarizeCustomerBill(pkg: PackageEntity): CustomerBillSummary | null {
+    const chargeStartAt = pkg.stored_at;
+
+    if (!chargeStartAt || !pkg.retrieved_at) {
+      return null;
     }
 
-    const packages = await this.packageService.listByAgent(Number(req.authUser.sub));
-    const packageSummaries = packages.map((pkg) => ({
+    const calculatedStoragePrice = this.storagePriceService.calculateStoragePrice(
+      chargeStartAt,
+      pkg.retrieved_at,
+    );
+
+    const billableDays = Math.max(
+      1,
+      Math.ceil((pkg.retrieved_at.getTime() - chargeStartAt.getTime()) / (24 * 60 * 60 * 1000)),
+    );
+
+    return {
+      package_id: pkg.id,
+      package_code: pkg.package_code,
+      locker_id: pkg.locker_id,
+      locker_label: pkg.locker?.label ?? null,
+      station_name: pkg.locker?.station?.name ?? null,
+      station_address: pkg.locker?.station
+        ? `${pkg.locker.station.address}, ${pkg.locker.station.city}`
+        : null,
+      stored_at: chargeStartAt,
+      retrieved_at: pkg.retrieved_at,
+      billable_days: billableDays,
+      calculated_storage_price: calculatedStoragePrice,
+      recorded_storage_price: pkg.storage_price === null ? null : Number(pkg.storage_price),
+      tier_breakdown: this.buildTierBreakdown(billableDays),
+    };
+  }
+
+  private summarizePackage(pkg: PackageEntity): PackageSummary {
+    return {
       id: pkg.id,
       package_code: pkg.package_code,
       locker_id: pkg.locker_id,
@@ -65,12 +177,14 @@ export class PackageController {
       delivery_status: pkg.delivery_status,
       assigned_at: pkg.assigned_at,
       stored_at: pkg.stored_at,
-      pickup_at: pkg.pickup_at,
       retrieved_at: pkg.retrieved_at,
       storage_price: pkg.storage_price,
       created_at: pkg.created_at,
       locker_label: pkg.locker?.label ?? null,
       station_name: pkg.locker?.station?.name ?? null,
+      station_address: pkg.locker?.station
+        ? `${pkg.locker.station.address}, ${pkg.locker.station.city}`
+        : null,
       locker: pkg.locker
         ? {
             id: pkg.locker.id,
@@ -107,7 +221,24 @@ export class PackageController {
             created_at: pkg.agent.created_at,
           }
         : null,
-    }));
+    };
+  }
+
+  private async handleList(req: Request, res: Response) {
+    if (!req.authUser) {
+      return res.status(401).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 401,
+          message: 'Unauthorized',
+          data: [],
+          errors: ['Unauthorized'],
+        })
+      );
+    }
+
+    const packages = await this.packageService.listByAgent(Number(req.authUser.sub));
+    const packageSummaries = packages.map((pkg) => this.summarizePackage(pkg));
 
     return res.status(200).json(
       buildApiResponse({
@@ -115,6 +246,106 @@ export class PackageController {
         statusCode: 200,
         message: 'Packages fetched successfully',
         data: packageSummaries,
+      })
+    );
+  }
+
+  private async handleCustomerList(req: Request, res: Response) {
+    if (!req.authUser) {
+      return res.status(401).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 401,
+          message: 'Unauthorized',
+          data: [],
+          errors: ['Unauthorized'],
+        })
+      );
+    }
+
+    const packages = await this.packageRepository.findByCustomerId(Number(req.authUser.sub));
+    const packageSummaries = packages.map((pkg) => this.summarizePackage(pkg));
+
+    return res.status(200).json(
+      buildApiResponse({
+        success: true,
+        statusCode: 200,
+        message: 'Packages fetched successfully',
+        data: packageSummaries,
+      })
+    );
+  }
+
+  private async handleCustomerBills(req: Request, res: Response) {
+    if (!req.authUser) {
+      return res.status(401).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 401,
+          message: 'Unauthorized',
+          data: [],
+          errors: ['Unauthorized'],
+        })
+      );
+    }
+
+    const packages = await this.packageRepository.findByCustomerId(Number(req.authUser.sub));
+    const billItems = packages
+      .map((pkg) => this.summarizeCustomerBill(pkg))
+      .filter((bill): bill is CustomerBillSummary => Boolean(bill))
+      .filter((bill) => (bill.recorded_storage_price ?? 0) > 0 || bill.calculated_storage_price > 0)
+      .sort((a, b) => b.retrieved_at.getTime() - a.retrieved_at.getTime());
+
+    const totalRecorded = Number(
+      billItems
+        .reduce((sum, bill) => sum + Number(bill.recorded_storage_price ?? 0), 0)
+        .toFixed(2),
+    );
+
+    const totalCalculated = Number(
+      billItems.reduce((sum, bill) => sum + bill.calculated_storage_price, 0).toFixed(2),
+    );
+
+    return res.status(200).json(
+      buildApiResponse({
+        success: true,
+        statusCode: 200,
+        message: 'Customer bills fetched successfully',
+        data: {
+          summary: {
+            total_items: billItems.length,
+            total_recorded_storage_price: totalRecorded,
+            total_calculated_storage_price: totalCalculated,
+            calculation_window: {
+              start_field: 'stored_at',
+              end_field: 'retrieved_at',
+            },
+            pricing_tiers: [
+              {
+                tier: 1,
+                label: 'Day 1-5',
+                from_day: 1,
+                to_day: 5,
+                rate_per_day: 1,
+              },
+              {
+                tier: 2,
+                label: 'Day 6-10',
+                from_day: 6,
+                to_day: 10,
+                rate_per_day: 2,
+              },
+              {
+                tier: 3,
+                label: 'Day 11+',
+                from_day: 11,
+                to_day: null,
+                rate_per_day: 3,
+              },
+            ],
+          },
+          items: billItems,
+        },
       })
     );
   }
@@ -406,6 +637,300 @@ export class PackageController {
           delivery_status: 'READY_TO_PICK',
           stored_at: storedAt.toISOString(),
           storage_price: storagePrice,
+        },
+      })
+    );
+  }
+
+  private async handleUnlock(req: Request, res: Response) {
+    if (!req.authUser) {
+      return res.status(401).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 401,
+          message: 'Unauthorized',
+          data: [],
+          errors: ['Unauthorized'],
+        })
+      );
+    }
+
+    const validation = UnlockLockerDto.validate(req.body ?? {});
+
+    if (!validation.isValid) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: validation.message,
+          data: [],
+          errors: validation.errors,
+        })
+      );
+    }
+
+    const lockerLabel = validation.value.lockerId.trim();
+    const pickupCode = validation.value.pickupCode.replace(/\s+/g, '').toUpperCase();
+
+    const pkg = await this.packageRepository.findByPickupCode(pickupCode);
+
+    if (!pkg) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: 'Invalid pickup code. Please check the code and try again.',
+          data: [],
+          errors: ['Invalid pickup code. Please check the code and try again.'],
+        })
+      );
+    }
+
+    if (pkg.delivery_status === 'PICKED') {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'This package was already retrieved.',
+          data: [],
+          errors: ['This package was already retrieved.'],
+        })
+      );
+    }
+
+    if (pkg.delivery_status !== 'READY_TO_PICK') {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'Package is not ready for pickup yet.',
+          data: [],
+          errors: ['Package is not ready for pickup yet.'],
+        })
+      );
+    }
+
+    if (pkg.customer_id !== Number(req.authUser.sub)) {
+      return res.status(403).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 403,
+          message: 'You can only unlock your own package',
+          data: [],
+          errors: ['You can only unlock your own package'],
+        })
+      );
+    }
+
+    const locker = pkg.locker_id ? await this.lockerRepository.findById(pkg.locker_id) : null;
+
+    if (!locker) {
+      return res.status(404).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 404,
+          message: 'Locker not found for this package',
+          data: [],
+          errors: ['Locker not found for this package'],
+        })
+      );
+    }
+
+    if (locker.label.toUpperCase() !== lockerLabel.toUpperCase()) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: 'Locker label does not match the pickup code.',
+          data: [],
+          errors: ['Locker label does not match the pickup code.'],
+        })
+      );
+    }
+
+    const billingStartAt = pkg.stored_at;
+
+    if (!billingStartAt) {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'Package is not stored yet.',
+          data: [],
+          errors: ['Package is not stored yet.'],
+        })
+      );
+    }
+
+    const referenceAt = new Date();
+    const storagePricePreview = this.storagePriceService.calculateStoragePrice(billingStartAt, referenceAt);
+
+    return res.status(200).json(
+      buildApiResponse({
+        success: true,
+        statusCode: 200,
+        message: `Locker ${locker.label} unlocked. Please confirm after retrieving your package.`,
+        data: {
+          locker_id: String(locker.id),
+          locker_label: locker.label,
+          package_id: String(pkg.id),
+          package_size: pkg.package_size,
+          customer_name: pkg.customer_name,
+          days_stored: Math.max(1, Math.ceil((referenceAt.getTime() - billingStartAt.getTime()) / (24 * 60 * 60 * 1000))),
+          storage_price: storagePricePreview,
+          storage_charge: storagePricePreview,
+          charge_unit: 'RM',
+        },
+      })
+    );
+  }
+
+  private async handleConfirmRetrieve(req: Request, res: Response) {
+    if (!req.authUser) {
+      return res.status(401).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 401,
+          message: 'Unauthorized',
+          data: [],
+          errors: ['Unauthorized'],
+        })
+      );
+    }
+
+    const validation = UnlockLockerDto.validate(req.body ?? {});
+
+    if (!validation.isValid) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: validation.message,
+          data: [],
+          errors: validation.errors,
+        })
+      );
+    }
+
+    const lockerLabel = validation.value.lockerId.trim();
+    const pickupCode = validation.value.pickupCode.replace(/\s+/g, '').toUpperCase();
+
+    const pkg = await this.packageRepository.findByPickupCode(pickupCode);
+
+    if (!pkg) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: 'Invalid pickup code. Please check the code and try again.',
+          data: [],
+          errors: ['Invalid pickup code. Please check the code and try again.'],
+        })
+      );
+    }
+
+    if (pkg.delivery_status === 'PICKED') {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'This package was already retrieved.',
+          data: [],
+          errors: ['This package was already retrieved.'],
+        })
+      );
+    }
+
+    if (pkg.delivery_status !== 'READY_TO_PICK') {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'Package is not ready for pickup yet.',
+          data: [],
+          errors: ['Package is not ready for pickup yet.'],
+        })
+      );
+    }
+
+    if (pkg.customer_id !== Number(req.authUser.sub)) {
+      return res.status(403).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 403,
+          message: 'You can only retrieve your own package',
+          data: [],
+          errors: ['You can only retrieve your own package'],
+        })
+      );
+    }
+
+    const locker = pkg.locker_id ? await this.lockerRepository.findById(pkg.locker_id) : null;
+
+    if (!locker) {
+      return res.status(404).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 404,
+          message: 'Locker not found for this package',
+          data: [],
+          errors: ['Locker not found for this package'],
+        })
+      );
+    }
+
+    if (locker.label.toUpperCase() !== lockerLabel.toUpperCase()) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: 'Locker label does not match the pickup code.',
+          data: [],
+          errors: ['Locker label does not match the pickup code.'],
+        })
+      );
+    }
+
+    const billingStartAt = pkg.stored_at;
+
+    if (!billingStartAt) {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'Package is not stored yet.',
+          data: [],
+          errors: ['Package is not stored yet.'],
+        })
+      );
+    }
+
+    const retrievedAt = new Date();
+    const storagePrice = this.storagePriceService.calculateStoragePrice(billingStartAt, retrievedAt);
+
+    await this.packageRepository.update(pkg.id, {
+      delivery_status: 'PICKED',
+      retrieved_at: retrievedAt,
+      storage_price: storagePrice,
+    } as any);
+
+    await this.lockerRepository.updateStatus(locker.id, 'available');
+
+    return res.status(200).json(
+      buildApiResponse({
+        success: true,
+        statusCode: 200,
+        message: `Package retrieved. Locker ${locker.label} is now available.`,
+        data: {
+          locker_id: String(locker.id),
+          locker_label: locker.label,
+          package_id: String(pkg.id),
+          package_size: pkg.package_size,
+          customer_name: pkg.customer_name,
+          days_stored: Math.max(1, Math.ceil((retrievedAt.getTime() - billingStartAt.getTime()) / (24 * 60 * 60 * 1000))),
+          storage_price: storagePrice,
+          storage_charge: storagePrice,
+          charge_unit: 'RM',
         },
       })
     );
