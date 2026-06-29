@@ -34,6 +34,7 @@ router.get('/customer/bills', authMiddleware, packageController.customerBills).r
 router.put('/packages/assign-locker', authMiddleware, packageController.assignLocker).role(['delivery_agent']);
 router.put('/packages/store', authMiddleware, packageController.store).role(['delivery_agent']);
 router.post('/locker/unlock', authMiddleware, packageController.unlock).role(['customer']);
+router.post('/locker/retrieve/confirm', authMiddleware, packageController.confirmRetrieve).role(['customer']);
 router.get('/notifications', authMiddleware, notificationController.list).role(['customer']);
 router.put('/notifications/:notificationId/read', authMiddleware, notificationController.markRead).role(['customer']);
 

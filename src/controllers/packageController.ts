@@ -27,7 +27,6 @@ type PackageSummary = {
   delivery_status: PackageEntity['delivery_status'];
   assigned_at: Date;
   stored_at: Date | null;
-  pickup_at: Date | null;
   retrieved_at: Date | null;
   storage_price: number | null;
   created_at: Date;
@@ -56,7 +55,7 @@ type CustomerBillSummary = {
   locker_label: string | null;
   station_name: string | null;
   station_address: string | null;
-  pickup_at: Date;
+  stored_at: Date;
   retrieved_at: Date;
   billable_days: number;
   calculated_storage_price: number;
@@ -92,6 +91,7 @@ export class PackageController {
   assignLocker = asyncHandler((req: Request, res: Response) => this.handleAssignLocker(req, res));
   store = asyncHandler((req: Request, res: Response) => this.handleStore(req, res));
   unlock = asyncHandler((req: Request, res: Response) => this.handleUnlock(req, res));
+  confirmRetrieve = asyncHandler((req: Request, res: Response) => this.handleConfirmRetrieve(req, res));
 
   private buildTierBreakdown(days: number): BillTierBreakdown[] {
     const tier1Days = Math.min(days, 5);
@@ -130,18 +130,20 @@ export class PackageController {
   }
 
   private summarizeCustomerBill(pkg: PackageEntity): CustomerBillSummary | null {
-    if (!pkg.pickup_at || !pkg.retrieved_at) {
+    const chargeStartAt = pkg.stored_at;
+
+    if (!chargeStartAt || !pkg.retrieved_at) {
       return null;
     }
 
     const calculatedStoragePrice = this.storagePriceService.calculateStoragePrice(
-      pkg.pickup_at,
+      chargeStartAt,
       pkg.retrieved_at,
     );
 
     const billableDays = Math.max(
       1,
-      Math.ceil((pkg.retrieved_at.getTime() - pkg.pickup_at.getTime()) / (24 * 60 * 60 * 1000)),
+      Math.ceil((pkg.retrieved_at.getTime() - chargeStartAt.getTime()) / (24 * 60 * 60 * 1000)),
     );
 
     return {
@@ -153,7 +155,7 @@ export class PackageController {
       station_address: pkg.locker?.station
         ? `${pkg.locker.station.address}, ${pkg.locker.station.city}`
         : null,
-      pickup_at: pkg.pickup_at,
+      stored_at: chargeStartAt,
       retrieved_at: pkg.retrieved_at,
       billable_days: billableDays,
       calculated_storage_price: calculatedStoragePrice,
@@ -175,7 +177,6 @@ export class PackageController {
       delivery_status: pkg.delivery_status,
       assigned_at: pkg.assigned_at,
       stored_at: pkg.stored_at,
-      pickup_at: pkg.pickup_at,
       retrieved_at: pkg.retrieved_at,
       storage_price: pkg.storage_price,
       created_at: pkg.created_at,
@@ -316,7 +317,7 @@ export class PackageController {
             total_recorded_storage_price: totalRecorded,
             total_calculated_storage_price: totalCalculated,
             calculation_window: {
-              start_field: 'pickup_at',
+              start_field: 'stored_at',
               end_field: 'retrieved_at',
             },
             pricing_tiers: [
@@ -609,7 +610,6 @@ export class PackageController {
     await this.packageRepository.update(pkg.id, {
       delivery_status: 'READY_TO_PICK',
       stored_at: storedAt,
-      pickup_at: pkg.pickup_at ?? storedAt,
       pickup_code: pickupCode,
       storage_price: storagePrice,
     } as any);
@@ -669,26 +669,12 @@ export class PackageController {
       );
     }
 
-    const lockerLabel = validation.value.lockerId;
-    const pickupCode = validation.value.pickupCode.toUpperCase();
+    const lockerLabel = validation.value.lockerId.trim();
+    const pickupCode = validation.value.pickupCode.replace(/\s+/g, '').toUpperCase();
 
-    const locker = await this.lockerRepository.findByLabel(lockerLabel);
+    const pkg = await this.packageRepository.findByPickupCode(pickupCode);
 
-    if (!locker) {
-      return res.status(404).json(
-        buildApiResponse({
-          success: false,
-          statusCode: 404,
-          message: 'Locker not found',
-          data: [],
-          errors: ['Locker not found'],
-        })
-      );
-    }
-
-    const pkg = await this.packageRepository.findByPickupCodeAndLockerId(pickupCode, locker.id);
-
-    if (!pkg || pkg.delivery_status !== 'READY_TO_PICK') {
+    if (!pkg) {
       return res.status(400).json(
         buildApiResponse({
           success: false,
@@ -696,6 +682,30 @@ export class PackageController {
           message: 'Invalid pickup code. Please check the code and try again.',
           data: [],
           errors: ['Invalid pickup code. Please check the code and try again.'],
+        })
+      );
+    }
+
+    if (pkg.delivery_status === 'PICKED') {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'This package was already retrieved.',
+          data: [],
+          errors: ['This package was already retrieved.'],
+        })
+      );
+    }
+
+    if (pkg.delivery_status !== 'READY_TO_PICK') {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'Package is not ready for pickup yet.',
+          data: [],
+          errors: ['Package is not ready for pickup yet.'],
         })
       );
     }
@@ -712,13 +722,194 @@ export class PackageController {
       );
     }
 
-    const billingStartAt = pkg.pickup_at ?? pkg.stored_at ?? pkg.assigned_at;
+    const locker = pkg.locker_id ? await this.lockerRepository.findById(pkg.locker_id) : null;
+
+    if (!locker) {
+      return res.status(404).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 404,
+          message: 'Locker not found for this package',
+          data: [],
+          errors: ['Locker not found for this package'],
+        })
+      );
+    }
+
+    if (locker.label.toUpperCase() !== lockerLabel.toUpperCase()) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: 'Locker label does not match the pickup code.',
+          data: [],
+          errors: ['Locker label does not match the pickup code.'],
+        })
+      );
+    }
+
+    const billingStartAt = pkg.stored_at;
+
+    if (!billingStartAt) {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'Package is not stored yet.',
+          data: [],
+          errors: ['Package is not stored yet.'],
+        })
+      );
+    }
+
+    const referenceAt = new Date();
+    const storagePricePreview = this.storagePriceService.calculateStoragePrice(billingStartAt, referenceAt);
+
+    return res.status(200).json(
+      buildApiResponse({
+        success: true,
+        statusCode: 200,
+        message: `Locker ${locker.label} unlocked. Please confirm after retrieving your package.`,
+        data: {
+          locker_id: String(locker.id),
+          locker_label: locker.label,
+          package_id: String(pkg.id),
+          package_size: pkg.package_size,
+          customer_name: pkg.customer_name,
+          days_stored: Math.max(1, Math.ceil((referenceAt.getTime() - billingStartAt.getTime()) / (24 * 60 * 60 * 1000))),
+          storage_price: storagePricePreview,
+          storage_charge: storagePricePreview,
+          charge_unit: 'RM',
+        },
+      })
+    );
+  }
+
+  private async handleConfirmRetrieve(req: Request, res: Response) {
+    if (!req.authUser) {
+      return res.status(401).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 401,
+          message: 'Unauthorized',
+          data: [],
+          errors: ['Unauthorized'],
+        })
+      );
+    }
+
+    const validation = UnlockLockerDto.validate(req.body ?? {});
+
+    if (!validation.isValid) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: validation.message,
+          data: [],
+          errors: validation.errors,
+        })
+      );
+    }
+
+    const lockerLabel = validation.value.lockerId.trim();
+    const pickupCode = validation.value.pickupCode.replace(/\s+/g, '').toUpperCase();
+
+    const pkg = await this.packageRepository.findByPickupCode(pickupCode);
+
+    if (!pkg) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: 'Invalid pickup code. Please check the code and try again.',
+          data: [],
+          errors: ['Invalid pickup code. Please check the code and try again.'],
+        })
+      );
+    }
+
+    if (pkg.delivery_status === 'PICKED') {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'This package was already retrieved.',
+          data: [],
+          errors: ['This package was already retrieved.'],
+        })
+      );
+    }
+
+    if (pkg.delivery_status !== 'READY_TO_PICK') {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'Package is not ready for pickup yet.',
+          data: [],
+          errors: ['Package is not ready for pickup yet.'],
+        })
+      );
+    }
+
+    if (pkg.customer_id !== Number(req.authUser.sub)) {
+      return res.status(403).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 403,
+          message: 'You can only retrieve your own package',
+          data: [],
+          errors: ['You can only retrieve your own package'],
+        })
+      );
+    }
+
+    const locker = pkg.locker_id ? await this.lockerRepository.findById(pkg.locker_id) : null;
+
+    if (!locker) {
+      return res.status(404).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 404,
+          message: 'Locker not found for this package',
+          data: [],
+          errors: ['Locker not found for this package'],
+        })
+      );
+    }
+
+    if (locker.label.toUpperCase() !== lockerLabel.toUpperCase()) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: 'Locker label does not match the pickup code.',
+          data: [],
+          errors: ['Locker label does not match the pickup code.'],
+        })
+      );
+    }
+
+    const billingStartAt = pkg.stored_at;
+
+    if (!billingStartAt) {
+      return res.status(409).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 409,
+          message: 'Package is not stored yet.',
+          data: [],
+          errors: ['Package is not stored yet.'],
+        })
+      );
+    }
+
     const retrievedAt = new Date();
     const storagePrice = this.storagePriceService.calculateStoragePrice(billingStartAt, retrievedAt);
 
     await this.packageRepository.update(pkg.id, {
       delivery_status: 'PICKED',
-      pickup_at: billingStartAt,
       retrieved_at: retrievedAt,
       storage_price: storagePrice,
     } as any);

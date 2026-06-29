@@ -21,7 +21,10 @@ export class PackageRepository extends BaseRepository<Package> implements Packag
   }
 
   async findByPickupCode(pickup_code: string): Promise<Package | null> {
-    return this.findOne({ pickup_code } as any);
+    return this.repository.findOne({
+      where: { pickup_code } as any,
+      relations: ['locker'],
+    });
   }
 
   async findByPickupCodeAndLockerId(pickup_code: string, locker_id: number): Promise<Package | null> {
