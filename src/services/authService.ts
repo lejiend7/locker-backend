@@ -97,6 +97,62 @@ export class AuthService implements AuthServiceInterface {
   }
 
   async login(input: { email?: string; password?: string }): Promise<AuthResult> {
+    const auth = await this.authenticateCredentials(input);
+
+    if (!auth.success) {
+      return auth;
+    }
+
+    const user = auth.user;
+    const accessToken = jwt.sign(
+      { sub: String(user.id), email: user.email, name: user.name, role: user.role },
+      this.jwtSecret,
+      { expiresIn: this.jwtExpiresIn }
+    );
+
+    return {
+      success: true,
+      message: 'Login successful',
+      data: {
+        accessToken,
+        user: { id: String(user.id), email: user.email, name: user.name, role: user.role },
+      },
+    };
+  }
+
+  async loginAdmin(input: { email?: string; password?: string }): Promise<AuthResult> {
+    const auth = await this.authenticateCredentials(input);
+
+    if (!auth.success) {
+      return auth;
+    }
+
+    const user = auth.user;
+
+    if (user.role !== 'admin') {
+      return { success: false, message: 'Admin credentials required' };
+    }
+
+    const accessToken = jwt.sign(
+      { sub: String(user.id), email: user.email, name: user.name, role: user.role },
+      this.jwtSecret,
+      { expiresIn: this.jwtExpiresIn }
+    );
+
+    return {
+      success: true,
+      message: 'Login successful',
+      data: {
+        accessToken,
+        user: { id: String(user.id), email: user.email, name: user.name, role: user.role },
+      },
+    };
+  }
+
+  private async authenticateCredentials(input: { email?: string; password?: string }): Promise<
+    | { success: true; user: { id: number; email: string; name: string; role: 'customer' | 'delivery_agent' | 'admin'; password: string } }
+    | { success: false; message: string }
+  > {
     const email = input.email?.trim().toLowerCase();
     const password = input.password;
 
@@ -114,18 +170,14 @@ export class AuthService implements AuthServiceInterface {
       return { success: false, message: 'Invalid email or password' };
     }
 
-    const accessToken = jwt.sign(
-      { sub: String(user.id), email: user.email, name: user.name, role: user.role },
-      this.jwtSecret,
-      { expiresIn: this.jwtExpiresIn }
-    );
-
     return {
       success: true,
-      message: 'Login successful',
-      data: {
-        accessToken,
-        user: { id: String(user.id), email: user.email, name: user.name, role: user.role },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        password: user.password,
       },
     };
   }

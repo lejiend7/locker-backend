@@ -1,5 +1,6 @@
 import {
 	authController,
+	adminUserController,
 	healthController,
 	landingController,
 	stationController,
@@ -17,7 +18,10 @@ router.get('/health', guestMiddleware, healthController.index);
 router.post('/auth/signup', guestMiddleware, authController.signup);
 router.post('/auth/signup/admin', guestMiddleware, authController.signupAdmin);
 router.post('/auth/login', guestMiddleware, authController.login);
+router.post('/auth/login/admin', guestMiddleware, authController.loginAdmin);
 router.get('/auth/session', authMiddleware, authController.session);
+router.get('/admin/users', authMiddleware, adminUserController.list).role(['admin']);
+router.put('/admin/users/:userId/reset-password', authMiddleware, adminUserController.resetPassword).role(['admin']);
 
 router.get('/stations', authMiddleware, stationController.list).role(['admin']);
 router.get('/agent/stations', authMiddleware, stationController.agentList).role(['delivery_agent']);

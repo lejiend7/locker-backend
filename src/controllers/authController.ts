@@ -1,6 +1,7 @@
 import { type Request, type Response } from 'express';
 import { AuthServiceInterface } from '@/services/interfaces/AuthServiceInterface.ts';
 import { LoginDto } from '@/dtos/loginDto.ts';
+import { LoginAdminDto } from '@/dtos/loginAdminDto.ts';
 import { SignupAdminDto } from '@/dtos/signupAdminDto.ts';
 import { SignupDto } from '@/dtos/signupDto.ts';
 import { asyncHandler } from '@/utils/asyncHandler.ts';
@@ -14,6 +15,8 @@ export class AuthController {
   signupAdmin = asyncHandler((req: Request, res: Response) => this.handleSignupAdmin(req, res));
 
   login = asyncHandler((req: Request, res: Response) => this.handleLogin(req, res));
+
+  loginAdmin = asyncHandler((req: Request, res: Response) => this.handleLoginAdmin(req, res));
 
   session = asyncHandler((req: Request, res: Response) => this.handleSession(req, res));
 
@@ -84,10 +87,65 @@ export class AuthController {
 
     if (!result.success) {
       const status = result.message === 'Invalid email or password' ? 401 : 400;
-      return res.status(status).json(result);
+      return res.status(status).json(
+        buildApiResponse({
+          success: false,
+          statusCode: status,
+          message: result.message,
+          data: [],
+          errors: [result.message],
+        })
+      );
     }
 
-    return res.status(200).json(result);
+    return res.status(200).json(
+      buildApiResponse({
+        success: true,
+        statusCode: 200,
+        message: result.message,
+        data: result.data,
+      })
+    );
+  }
+
+  private async handleLoginAdmin(req: Request, res: Response) {
+    const validation = LoginAdminDto.validate(req.body ?? {});
+
+    if (!validation.isValid) {
+      return res.status(400).json(
+        buildApiResponse({
+          success: false,
+          statusCode: 400,
+          message: validation.message,
+          data: [],
+          errors: validation.errors,
+        })
+      );
+    }
+
+    const result = await this.authService.loginAdmin(validation.value);
+
+    if (!result.success) {
+      const status = result.message === 'Invalid email or password' || result.message === 'Admin credentials required' ? 401 : 400;
+      return res.status(status).json(
+        buildApiResponse({
+          success: false,
+          statusCode: status,
+          message: result.message,
+          data: [],
+          errors: [result.message],
+        })
+      );
+    }
+
+    return res.status(200).json(
+      buildApiResponse({
+        success: true,
+        statusCode: 200,
+        message: result.message,
+        data: result.data,
+      })
+    );
   }
 
   private async handleSession(req: Request, res: Response) {
