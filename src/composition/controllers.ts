@@ -32,6 +32,7 @@ import { LandingController } from '@/controllers/landingController.ts';
 import { StationController } from '@/controllers/stationController.ts';
 import { LockerController } from '@/controllers/lockerController.ts';
 import { PackageController } from '@/controllers/packageController.ts';
+import { NotificationController } from '@/controllers/notificationController.ts';
 
 const jwtSecret = process.env.JWT_SECRET || '';
 
@@ -66,3 +67,4 @@ export const packageController = new PackageController(
   packageService,
   storagePriceService,
 );
+export const notificationController = new NotificationController(notificationRepository);

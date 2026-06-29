@@ -8,6 +8,10 @@ export class LockerRepository extends BaseRepository<Locker> implements LockerRe
     super(repository);
   }
 
+  async findByLabel(label: string): Promise<Locker | null> {
+    return this.findOne({ label } as any);
+  }
+
   async findByStationId(station_id: number): Promise<Locker[]> {
     return this.find({ station_id } as any);
   }

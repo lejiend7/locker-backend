@@ -9,7 +9,11 @@ export class PackageRepository extends BaseRepository<Package> implements Packag
   }
 
   async findByCustomerId(customer_id: number): Promise<Package[]> {
-    return this.find({ customer_id } as any);
+    return this.repository.find({
+      where: { customer_id } as any,
+      relations: ['locker', 'locker.station', 'customer', 'agent'],
+      order: { created_at: 'DESC' } as any,
+    });
   }
 
   async findByLockerId(locker_id: number): Promise<Package | null> {
@@ -23,7 +27,7 @@ export class PackageRepository extends BaseRepository<Package> implements Packag
   async findByPickupCodeAndLockerId(pickup_code: string, locker_id: number): Promise<Package | null> {
     return this.repository.findOne({
       where: { pickup_code, locker_id } as any,
-      relations: ['locker', 'user'],
+      relations: ['locker'],
     });
   }
 
@@ -39,6 +43,14 @@ export class PackageRepository extends BaseRepository<Package> implements Packag
         agent_id,
       } as any,
       order: { assigned_at: 'ASC' } as any,
+      relations: ['locker', 'locker.station', 'customer', 'agent'],
+    });
+  }
+
+  async listByCustomer(customer_id: number): Promise<Package[]> {
+    return this.repository.find({
+      where: { customer_id } as any,
+      order: { created_at: 'DESC' } as any,
       relations: ['locker', 'locker.station', 'customer', 'agent'],
     });
   }

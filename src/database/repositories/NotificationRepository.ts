@@ -15,6 +15,7 @@ export class NotificationRepository
     return this.repository.find({
       where: { user_id } as any,
       order: { created_at: 'DESC' } as any,
+      relations: ['package'],
     });
   }
 

@@ -9,5 +9,6 @@ export interface PackageRepositoryInterface {
   findByPickupCode(pickup_code: string): Promise<Package | null>;
   findByPickupCodeAndLockerId(pickup_code: string, locker_id: number): Promise<Package | null>;
   findReadyToPickByLockerId(locker_id: number): Promise<Package | null>;
+  listByCustomer(customer_id: number): Promise<Package[]>;
   listByAgent(agent_id: number): Promise<Package[]>;
 }
