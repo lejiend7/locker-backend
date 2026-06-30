@@ -1,5 +1,9 @@
 # SmartLocker Backend API
 
+### Architecture Diagram
+
+![SmartLocker Backend Structure](<src/public/Smart Locker Backend Structure.drawio.png>)
+
 A Node.js/Express backend for the SmartLocker package management system. It uses **TypeScript**, **Express 5**, **TypeORM**, **MySQL**, **JWT-based auth**, **Vitest**, and **tsx** to support a modular API with controllers, middleware, services, repositories, and tests.
 
 ## 🎯 Assignment Focus: Design Patterns Implemented
@@ -679,10 +683,6 @@ In practice:
 - **Seeders** populate development/demo data in [src/database/seeders](src/database/seeders).
 
 This structure makes the backend easy to follow: middleware handles cross-cutting concerns, routes decide which handler to run, controllers coordinate the flow, services own the business logic, and the database layer stays organized through entities, migrations, repositories, and seeders.
-
-### Architecture Diagram
-
-![Locker Backend Architecture](./src/public/Smart Locker Backend Structure.drawio.png)
 
 ---
 
