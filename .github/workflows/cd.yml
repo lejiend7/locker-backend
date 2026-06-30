@@ -5,6 +5,7 @@ on:
     workflows: [CI]
     branches: [main]
     types: [completed]
+  workflow_dispatch:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -30,7 +31,7 @@ jobs:
   cd:
     name: CD
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Configure SSH key
         shell: bash
@@ -43,20 +44,10 @@ jobs:
         shell: bash
         run: |
           ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
             -o GlobalKnownHostsFile=/dev/null \
-            -J "$BASTION_USER@$BASTION_HOST" \
+            -o "ProxyCommand=ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -W %h:%p $BASTION_USER@$BASTION_HOST" \
             "$PRIVATE_USER@$PRIVATE_HOST" \
-            "aws ecr get-login-password --region '$AWS_REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY' && docker pull '$ECR_REGISTRY/$ECR_REPOSITORY:latest' && SCRIPT_PATH=\$(find ~ -maxdepth 5 -name run-dev-compose-check.sh -type f | head -n 1) && if [ -z \"\$SCRIPT_PATH\" ]; then echo 'run-dev-compose-check.sh not found on target host'; exit 1; fi && APP_DIR=\$(dirname \"\$SCRIPT_PATH\") && cat > \"\$APP_DIR/.env\" <<EOF
-PORT=$PORT
-NODE_ENV=$NODE_ENV
-DB_HOST=$DB_HOST
-DB_PORT=$DB_PORT
-DB_NAME=$DB_NAME
-MYSQL_USER=$MYSQL_USER
-MYSQL_PASSWORD=$MYSQL_PASSWORD
-JWT_SECRET=$JWT_SECRET
-CORS_ORIGIN=$CORS_ORIGIN
-EOF
-            && cd \"\$APP_DIR\" && chmod +x ./run-dev-compose-check.sh && ./run-dev-compose-check.sh"
+            "set -euo pipefail; aws ecr get-login-password --region '$AWS_REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY'; docker pull '$ECR_REGISTRY/$ECR_REPOSITORY:latest'; SCRIPT_PATH=\$(find ~ -maxdepth 5 -name run-dev-compose-check.sh -type f | head -n 1); if [ -z \"\$SCRIPT_PATH\" ]; then echo 'run-dev-compose-check.sh not found on target host'; exit 1; fi; APP_DIR=\$(dirname \"\$SCRIPT_PATH\"); printf '%s\n' 'PORT=$PORT' 'NODE_ENV=$NODE_ENV' 'DB_HOST=$DB_HOST' 'DB_PORT=$DB_PORT' 'DB_NAME=$DB_NAME' 'MYSQL_USER=$MYSQL_USER' 'MYSQL_PASSWORD=$MYSQL_PASSWORD' 'JWT_SECRET=$JWT_SECRET' 'CORS_ORIGIN=$CORS_ORIGIN' > \"\$APP_DIR/.env\"; cd \"\$APP_DIR\"; chmod +x ./run-dev-compose-check.sh; ./run-dev-compose-check.sh"
