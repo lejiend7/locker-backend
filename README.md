@@ -38,6 +38,7 @@ Supporting engineering practices used with these patterns:
 - [Data Seeding](#-data-seeding)
 - [Development](#-development)
 - [Testing](#-testing)
+- [CI/CD](#-cicd)
 - [Production](#-production)
 - [API Reference](#-api-reference)
 - [Architecture](#-architecture)
@@ -173,6 +174,16 @@ This convention is configured in `tsconfig.json` and should be used consistently
 | `DB_NAME` | Database name | `smartlocker` |
 | `MYSQL_USER` | MySQL username | `local_user` |
 | `MYSQL_PASSWORD` | MySQL password | `Local-User-DKX-983!` |
+| `JWT_SECRET` | JWT signing secret | `change-this-jwt-secret` |
+| `CORS_ORIGIN` | Allowed frontend origin | `http://localhost:5173` |
+
+### Recommended `.env` Strategy
+
+- Keep local development values in `.env` (already gitignored).
+- Use `.env.example` as the template only (no real secrets).
+- For cloud deployment with Docker Compose, create a real `.env` file directly on the server and never commit it.
+- Store CI/CD credentials in GitHub Secrets and infrastructure settings in GitHub Variables.
+- During CD, the workflow regenerates the server `.env` from GitHub Secrets before restarting services.
 
 ---
 
@@ -247,13 +258,17 @@ Server starts at `http://localhost:3000`
 
 ### Build TypeScript
 
-Compiles `src/` → `dist/`:
+Bundles backend source into `dist/`:
 
 ```bash
 npm run build
 ```
 
-This validates all TypeScript types and generates JavaScript ready for production.
+For stricter type validation without emitting files:
+
+```bash
+npm run typecheck
+```
 
 ---
 
@@ -281,6 +296,88 @@ Use this for interactive test development while editing services and repositorie
 
 ---
 
+## 🔁 CI/CD
+
+This repository uses two GitHub Actions workflows:
+
+- `CI` in `.github/workflows/ci.yml`
+- `CD` in `.github/workflows/cd.yml`
+
+### CI Workflow (`ci.yml`)
+
+**Triggers**
+
+- `workflow_dispatch`
+- `push` on `main`
+- `pull_request` targeting `main`
+
+**Pipeline behavior**
+
+1. Install dependencies (`npm ci`)
+2. Build application (`npm run build`)
+3. Run unit tests (`npm run test:unit`)
+4. Build Docker image
+5. On `push` to `main` only:
+  - Configure AWS credentials
+  - Login to ECR
+  - Push `latest` and commit SHA tags
+  - Apply ECR lifecycle policy (keep latest 5 images)
+
+### CD Workflow (`cd.yml`)
+
+**Trigger**
+
+- Runs on `workflow_run` after `CI` completes successfully on `main`.
+
+**Deployment behavior**
+
+1. Configure SSH key from GitHub Secret.
+2. SSH from runner to private host through bastion (`ProxyJump`).
+3. Login to ECR on target host and pull latest backend image.
+4. Locate `run-dev-compose-check.sh` on target host.
+5. Regenerate target host `.env` from GitHub Secrets.
+6. Run `run-dev-compose-check.sh`:
+  - Build first
+  - Stop/remove old compose resources
+  - Start services
+  - Health check with retry
+  - Print app logs
+
+### Required GitHub Configuration
+
+**Repository Variables**
+
+- `AWS_REGION`
+- `BASTION_HOST`
+- `BASTION_USER`
+- `PRIVATE_HOST`
+- `PRIVATE_USER`
+- `ECR_REGISTRY`
+- `ECR_REPOSITORY`
+
+**Repository Secrets**
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `SSH_PRIVATE_KEY`
+- `PORT`
+- `NODE_ENV`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `JWT_SECRET`
+- `CORS_ORIGIN`
+
+### Notes
+
+- CD expects `run-dev-compose-check.sh` to exist on the target host inside your deployed backend directory.
+- CD will overwrite the target host `.env` on each deployment using GitHub Secrets.
+- If CI succeeds on pull requests, CD will not run unless it is a successful CI run on `main`.
+
+---
+
 ## 📦 Production
 
 ### Build
@@ -301,8 +398,22 @@ Runs the compiled code from `dist/`.
 
 Docker images are configured in:
 - [Dockerfile](./Dockerfile)
-- [docker-compose.local.yml](./docker-compose-local.yml) — Local dev
+- [Dockerfile-dev](./Dockerfile-dev) — Cloud/server compose runtime
+- [docker-compose-local.yml](./docker-compose-local.yml) — Local dev
 - [docker-compose.dev.yml](./docker-compose.dev.yml) — Production
+
+`docker-compose.dev.yml` expects a `.env` file on the server and injects it via `env_file`.
+
+### Test `docker-compose.dev.yml` (Cloud-like)
+
+```bash
+docker compose -f docker-compose.dev.yml config
+docker compose -f docker-compose.dev.yml build --no-cache app
+docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml logs -f app
+```
+
+This verifies the image builds successfully, environment variables load from `.env`, and the app boots in container mode.
 
 ---
 

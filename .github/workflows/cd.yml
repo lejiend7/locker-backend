@@ -7,7 +7,21 @@ on:
     types: [completed]
 
 env:
-  AWS_REGION: ap-southeast-5
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  BASTION_HOST: ${{ vars.BASTION_HOST }}
+  BASTION_USER: ${{ vars.BASTION_USER }}
+  PRIVATE_HOST: ${{ vars.PRIVATE_HOST }}
+  PRIVATE_USER: ${{ vars.PRIVATE_USER }}
+
+  PORT: ${{ secrets.PORT }}
+  NODE_ENV: ${{ secrets.NODE_ENV }}
+  DB_HOST: ${{ secrets.DB_HOST }}
+  DB_PORT: ${{ secrets.DB_PORT }}
+  DB_NAME: ${{ secrets.DB_NAME }}
+  MYSQL_USER: ${{ secrets.MYSQL_USER }}
+  MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
 
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
@@ -17,15 +31,32 @@ jobs:
     name: CD
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    # TODO: EC2 instance will pull the latest image from ECR and restart the container.
-    # Steps to implement:
-    #   1. Configure AWS credentials
-    #   2. SSH into EC2 (via SSM Session Manager or direct SSH)
-    #   3. Run: docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
-    #   4. Run: docker stop locker-backend && docker rm locker-backend
-    #   5. Run: docker run -d --name locker-backend ... $ECR_REGISTRY/$ECR_REPOSITORY:latest
     steps:
-      - name: Placeholder — EC2 deployment not finalized
+      - name: Configure SSH key
+        shell: bash
         run: |
-          echo "CI passed. Image ready at: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
-          echo "TODO: trigger EC2 to pull and run the latest image."
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Bastion hop and pull latest ECR image
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o GlobalKnownHostsFile=/dev/null \
+            -J "$BASTION_USER@$BASTION_HOST" \
+            "$PRIVATE_USER@$PRIVATE_HOST" \
+            "aws ecr get-login-password --region '$AWS_REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY' && docker pull '$ECR_REGISTRY/$ECR_REPOSITORY:latest' && SCRIPT_PATH=\$(find ~ -maxdepth 5 -name run-dev-compose-check.sh -type f | head -n 1) && if [ -z \"\$SCRIPT_PATH\" ]; then echo 'run-dev-compose-check.sh not found on target host'; exit 1; fi && APP_DIR=\$(dirname \"\$SCRIPT_PATH\") && cat > \"\$APP_DIR/.env\" <<EOF
+PORT=$PORT
+NODE_ENV=$NODE_ENV
+DB_HOST=$DB_HOST
+DB_PORT=$DB_PORT
+DB_NAME=$DB_NAME
+MYSQL_USER=$MYSQL_USER
+MYSQL_PASSWORD=$MYSQL_PASSWORD
+JWT_SECRET=$JWT_SECRET
+CORS_ORIGIN=$CORS_ORIGIN
+EOF
+            && cd \"\$APP_DIR\" && chmod +x ./run-dev-compose-check.sh && ./run-dev-compose-check.sh"
