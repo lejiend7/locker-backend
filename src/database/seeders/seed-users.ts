@@ -2,6 +2,9 @@ import 'reflect-metadata';
 import bcrypt from 'bcryptjs';
 import { AppDataSource } from '@/database/data-source.ts';
 import { User } from '@/database/entities/User.ts';
+import users from '@/database/seeders/seeder-data/users.ts';
+
+const DEFAULT_SEED_PASSWORD = 'SecurePass123!';
 
 async function seedUsers() {
   try {
@@ -10,30 +13,12 @@ async function seedUsers() {
 
     const userRepo = AppDataSource.getRepository(User);
 
-    const users = [
-      {
-        name: 'Priya Sharma',
-        email: 'priya@example.com',
-        plainPassword: 'SecurePass1!',
-        role: 'customer' as const,
-      },
-      {
-        name: 'Ahmad Hassan',
-        email: 'ahmad@example.com',
-        plainPassword: 'SecurePass2!',
-        role: 'delivery_agent' as const,
-      },
-      {
-        name: 'Lejiend Test',
-        email: 'lejiend@test.com',
-        plainPassword: 'SecurePass3!',
-        role: 'admin' as const,
-      },
-    ];
+    const passwordHash = await bcrypt.hash(DEFAULT_SEED_PASSWORD, 10);
+    let insertedCount = 0;
+    let skippedCount = 0;
 
     for (const user of users) {
       const existingUser = await userRepo.findOne({ where: { email: user.email } });
-      const passwordHash = await bcrypt.hash(user.plainPassword, 10);
 
       if (!existingUser) {
         const newUser = userRepo.create({
@@ -43,17 +28,15 @@ async function seedUsers() {
           role: user.role,
         });
         await userRepo.save(newUser);
-        console.log(`Inserted user ${user.email}`);
+        insertedCount += 1;
+        console.log(`Inserted user ${user.email} (${user.role})`);
       } else {
-        existingUser.name = user.name;
-        existingUser.password = passwordHash;
-        existingUser.role = user.role;
-        await userRepo.save(existingUser);
-        console.log(`Updated user ${user.email}`);
+        skippedCount += 1;
+        console.log(`Skipped existing user ${user.email} (${existingUser.role})`);
       }
     }
 
-    console.log('User seeding completed');
+    console.log(`User seeding completed (inserted: ${insertedCount}, skipped: ${skippedCount})`);
     await AppDataSource.destroy();
     process.exit(0);
   } catch (error) {
