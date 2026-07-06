@@ -5,7 +5,7 @@ on:
   push:
     branches: [dev]
   pull_request:
-    branches: [dev]
+    branches: [main, dev]
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -14,6 +14,7 @@ env:
 
 jobs:
   unit-tests:
+    if: github.event_name != 'pull_request' || github.head_ref == 'dev' || github.base_ref == 'dev'
     uses: ./.github/workflows/ci-unit-tests.yml
 
   security-check:
