@@ -302,11 +302,24 @@ Use this for interactive test development while editing services and repositorie
 
 ## 🔁 CI/CD
 
-This repository uses three GitHub Actions workflows:
+This repository uses four GitHub Actions workflows:
 
+- `CI Unit Tests` in `.github/workflows/ci-unit-tests.yml`
 - `CI Local` in `.github/workflows/ci-local.yml`
 - `CI Dev` in `.github/workflows/ci-dev.yml`
 - `CD` in `.github/workflows/cd.yml`
+
+### CI Unit Tests Workflow (`ci-unit-tests.yml`)
+
+**Purpose**
+
+- Shared reusable workflow (`workflow_call`) that runs common quality gates once.
+
+**Pipeline behavior**
+
+1. Install dependencies (`npm ci`)
+2. Run unit tests only (`npm run test:unit`)
+3. Build application (`npm run build`)
 
 ### CI Local Workflow (`ci-local.yml`)
 
@@ -318,10 +331,8 @@ This repository uses three GitHub Actions workflows:
 
 **Pipeline behavior**
 
-1. Install dependencies (`npm ci`)
-2. Build application (`npm run build`)
-3. Run unit tests (`npm run test:unit`)
-4. Build Docker image from the default `Dockerfile`
+1. Run shared reusable unit-test workflow first (`needs: unit-tests`)
+2. Build Docker image from `Dockerfile.local`
 5. On `push` to `main` only:
   - Configure AWS credentials
   - Login to ECR
@@ -337,11 +348,12 @@ This repository uses three GitHub Actions workflows:
 
 **Pipeline behavior**
 
-1. Checkout repository
-2. Configure AWS credentials
-3. Login to ECR
-4. Build image from `Dockerfile-dev`
-5. Push `dev-latest` and `dev-<commit-sha>` tags
+1. Run shared reusable unit-test workflow first (`needs: unit-tests`)
+2. Checkout repository
+3. Configure AWS credentials
+4. Login to ECR
+5. Build image from `Dockerfile.dev`
+6. Push `dev-latest` and `dev-<commit-sha>` tags
 
 ### CD Workflow (`cd.yml`)
 
@@ -398,6 +410,19 @@ This repository uses three GitHub Actions workflows:
 - CD will overwrite the target host `.env` on each deployment using GitHub Secrets.
 - Automatic CD will not run from `main`; it follows the `dev` image flow.
 
+### DRY Approach
+
+- Unit tests are centralized in a reusable workflow (`ci-unit-tests.yml`) and consumed by both `CI Local` and `CI Dev`.
+- Image tags are separated by concern to avoid overlap:
+  - `local-*` for `Dockerfile.local`
+  - `dev-*` for `Dockerfile.dev`
+- Deployment bundle is minimal and explicit (`.env`, `docker-compose.dev.yml`, `run-dev-compose-check.sh`).
+- Dependency graph checks can be done from one command:
+
+```bash
+npm ls esbuild tsup
+```
+
 ---
 
 ## 📦 Production
@@ -419,8 +444,8 @@ Runs the compiled code from `dist/`.
 ### Docker Deployment
 
 Docker images are configured in:
-- [Dockerfile](./Dockerfile)
-- [Dockerfile-dev](./Dockerfile-dev) — Cloud/server compose runtime
+- [Dockerfile.local](./Dockerfile.local) — Local image flow
+- [Dockerfile.dev](./Dockerfile.dev) — Dev image flow for ECR/CD
 - [docker-compose-local.yml](./docker-compose-local.yml) — Local dev
 - [docker-compose.dev.yml](./docker-compose.dev.yml) — Production
 

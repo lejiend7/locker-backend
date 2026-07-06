@@ -16,10 +16,14 @@ jobs:
   unit-tests:
     uses: ./.github/workflows/ci-unit-tests.yml
 
-  ci-local:
-    name: CI Local
-    runs-on: ubuntu-latest
+  security-check:
+    uses: ./.github/workflows/ci-security-check.yml
     needs: unit-tests
+
+  build-local-image:
+    name: Build Local Image
+    runs-on: ubuntu-latest
+    needs: [unit-tests, security-check]
     steps:
       - uses: actions/checkout@v4
 
@@ -32,8 +36,29 @@ jobs:
             -t $ECR_REPOSITORY:local-${{ github.sha }} \
             .
 
+      - name: Export local image artifact
+        run: docker save $ECR_REPOSITORY:local-latest -o local-image.tar
+
+      - name: Upload local image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-image
+          path: local-image.tar
+
+  image-scan:
+    uses: ./.github/workflows/ci-image-scan.yml
+    needs: build-local-image
+    with:
+      artifact-name: local-image
+      image-ref: ${{ env.ECR_REPOSITORY }}:local-latest
+
+  push-local-image:
+    name: Push Local Image
+    runs-on: ubuntu-latest
+    needs: image-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
       - name: Configure AWS credentials
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -41,13 +66,19 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           aws ecr get-login-password --region $AWS_REGION \
             | docker login --username AWS --password-stdin $ECR_REGISTRY
 
+      - name: Download local image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: local-image
+
+      - name: Load local image from artifact
+        run: docker load -i local-image.tar
+
       - name: Tag and push local image to ECR
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           docker tag $ECR_REPOSITORY:local-latest $ECR_REGISTRY/$ECR_REPOSITORY:local-latest
           docker tag $ECR_REPOSITORY:local-${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY:local-${{ github.sha }}
@@ -55,7 +86,6 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:local-${{ github.sha }}
 
       - name: Enforce ECR image retention (keep 5 latest)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           aws ecr put-lifecycle-policy \
             --repository-name $ECR_REPOSITORY \

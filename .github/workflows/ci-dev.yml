@@ -14,13 +14,47 @@ jobs:
   unit-tests:
     uses: ./.github/workflows/ci-unit-tests.yml
 
-  ci-dev:
-    name: Build and Push Dev Image
-    runs-on: ubuntu-latest
+  security-check:
+    uses: ./.github/workflows/ci-security-check.yml
     needs: unit-tests
+
+  build-dev-image:
+    name: Build Dev Image
+    runs-on: ubuntu-latest
+    needs: [unit-tests, security-check]
     steps:
       - uses: actions/checkout@v4
 
+      - name: Build dev Docker image
+        run: |
+          docker build \
+            -f Dockerfile.dev \
+            --target production \
+            -t $ECR_REPOSITORY:dev-latest \
+            -t $ECR_REPOSITORY:dev-${{ github.sha }} \
+            .
+
+      - name: Export dev image artifact
+        run: docker save $ECR_REPOSITORY:dev-latest -o dev-image.tar
+
+      - name: Upload dev image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-image
+          path: dev-image.tar
+
+  image-scan:
+    uses: ./.github/workflows/ci-image-scan.yml
+    needs: build-dev-image
+    with:
+      artifact-name: dev-image
+      image-ref: ${{ env.ECR_REPOSITORY }}:dev-latest
+
+  push-dev-image:
+    name: Push Dev Image
+    runs-on: ubuntu-latest
+    needs: image-scan
+    steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -33,14 +67,13 @@ jobs:
           aws ecr get-login-password --region $AWS_REGION \
             | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-      - name: Build dev Docker image
-        run: |
-          docker build \
-            -f Dockerfile.dev \
-            --target production \
-            -t $ECR_REPOSITORY:dev-latest \
-            -t $ECR_REPOSITORY:dev-${{ github.sha }} \
-            .
+      - name: Download dev image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-image
+
+      - name: Load dev image from artifact
+        run: docker load -i dev-image.tar
 
       - name: Tag and push dev image to ECR
         run: |
