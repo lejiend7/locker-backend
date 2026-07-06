@@ -2,8 +2,8 @@ name: CD
 
 on:
   workflow_run:
-    workflows: [CI]
-    branches: [main]
+    workflows: [CI Dev]
+    branches: [dev]
     types: [completed]
   workflow_dispatch:
 
@@ -13,6 +13,7 @@ env:
   BASTION_USER: ${{ vars.BASTION_USER }}
   PRIVATE_HOST: ${{ vars.PRIVATE_HOST }}
   PRIVATE_USER: ${{ vars.PRIVATE_USER }}
+  DEPLOY_DIR: /home/ubuntu/application/locker-backend
 
   PORT: ${{ secrets.PORT }}
   NODE_ENV: ${{ secrets.NODE_ENV }}
@@ -33,6 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: Configure SSH key
         shell: bash
         run: |
@@ -40,9 +43,37 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-      - name: Bastion hop and pull latest ECR image
+      - name: Prepare deployment bundle
         shell: bash
         run: |
+          mkdir -p .deploy-bundle
+          cp docker-compose.dev.yml .deploy-bundle/docker-compose.dev.yml
+          cp run-dev-compose-check.sh .deploy-bundle/run-dev-compose-check.sh
+          printf '%s\n' \
+            "PORT=$PORT" \
+            "NODE_ENV=$NODE_ENV" \
+            "DB_HOST=$DB_HOST" \
+            "DB_PORT=$DB_PORT" \
+            "DB_NAME=$DB_NAME" \
+            "MYSQL_USER=$MYSQL_USER" \
+            "MYSQL_PASSWORD=$MYSQL_PASSWORD" \
+            "JWT_SECRET=$JWT_SECRET" \
+            "CORS_ORIGIN=$CORS_ORIGIN" \
+            > .deploy-bundle/.env
+
+      - name: Upload deployment bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-deploy-bundle
+          path: .deploy-bundle/
+          if-no-files-found: error
+          include-hidden-files: true
+
+      - name: Rsync deployment bundle to target host
+        shell: bash
+        run: |
+          TARGET_DIR="${DEPLOY_DIR:-$HOME/locker-backend}"
+
           ssh -i ~/.ssh/deploy_key \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=no \
@@ -50,4 +81,24 @@ jobs:
             -o GlobalKnownHostsFile=/dev/null \
             -o "ProxyCommand=ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -W %h:%p $BASTION_USER@$BASTION_HOST" \
             "$PRIVATE_USER@$PRIVATE_HOST" \
-            "set -euo pipefail; aws ecr get-login-password --region '$AWS_REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY'; docker pull '$ECR_REGISTRY/$ECR_REPOSITORY:latest'; SCRIPT_PATH=\$(find ~ -maxdepth 5 -name run-dev-compose-check.sh -type f | head -n 1); if [ -z \"\$SCRIPT_PATH\" ]; then echo 'run-dev-compose-check.sh not found on target host'; exit 1; fi; APP_DIR=\$(dirname \"\$SCRIPT_PATH\"); printf '%s\n' 'PORT=$PORT' 'NODE_ENV=$NODE_ENV' 'DB_HOST=$DB_HOST' 'DB_PORT=$DB_PORT' 'DB_NAME=$DB_NAME' 'MYSQL_USER=$MYSQL_USER' 'MYSQL_PASSWORD=$MYSQL_PASSWORD' 'JWT_SECRET=$JWT_SECRET' 'CORS_ORIGIN=$CORS_ORIGIN' > \"\$APP_DIR/.env\"; cd \"\$APP_DIR\"; chmod +x ./run-dev-compose-check.sh; ./run-dev-compose-check.sh"
+            "mkdir -p \"$TARGET_DIR\""
+
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -o ProxyCommand='ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -W %h:%p $BASTION_USER@$BASTION_HOST'" \
+            .deploy-bundle/ \
+            "$PRIVATE_USER@$PRIVATE_HOST:$TARGET_DIR/"
+
+      - name: Bastion hop and pull latest dev ECR image
+        shell: bash
+        run: |
+          TARGET_DIR="${DEPLOY_DIR:-$HOME/locker-backend}"
+
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o GlobalKnownHostsFile=/dev/null \
+            -o "ProxyCommand=ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -W %h:%p $BASTION_USER@$BASTION_HOST" \
+            "$PRIVATE_USER@$PRIVATE_HOST" \
+              "set -euo pipefail; aws ecr get-login-password --region '$AWS_REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY'; docker pull '$ECR_REGISTRY/$ECR_REPOSITORY:dev-latest'; APP_DIR=\"$TARGET_DIR\"; cd \"\$APP_DIR\"; chmod +x ./run-dev-compose-check.sh; ./run-dev-compose-check.sh"
+

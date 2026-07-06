@@ -1,4 +1,4 @@
-name: CI
+name: CI Local
 
 on:
   workflow_dispatch:
@@ -13,8 +13,8 @@ env:
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
 
 jobs:
-  ci:
-    name: CI
+  ci-local:
+    name: CI Local
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,8 +34,14 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
-      - name: Build Docker image
-        run: docker build -t $ECR_REPOSITORY .
+      - name: Build local Docker image
+        run: |
+          docker build \
+            -f Dockerfile-local \
+            --target production \
+            -t $ECR_REPOSITORY:local-latest \
+            -t $ECR_REPOSITORY:local-${{ github.sha }} \
+            .
 
       - name: Configure AWS credentials
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -51,13 +57,13 @@ jobs:
           aws ecr get-login-password --region $AWS_REGION \
             | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-      - name: Tag and push image to ECR
+      - name: Tag and push local image to ECR
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          docker tag $ECR_REPOSITORY:local-latest $ECR_REGISTRY/$ECR_REPOSITORY:local-latest
+          docker tag $ECR_REPOSITORY:local-${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY:local-${{ github.sha }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:local-latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:local-${{ github.sha }}
 
       - name: Enforce ECR image retention (keep 5 latest)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

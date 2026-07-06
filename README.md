@@ -302,12 +302,13 @@ Use this for interactive test development while editing services and repositorie
 
 ## 🔁 CI/CD
 
-This repository uses two GitHub Actions workflows:
+This repository uses three GitHub Actions workflows:
 
-- `CI` in `.github/workflows/ci.yml`
+- `CI Local` in `.github/workflows/ci-local.yml`
+- `CI Dev` in `.github/workflows/ci-dev.yml`
 - `CD` in `.github/workflows/cd.yml`
 
-### CI Workflow (`ci.yml`)
+### CI Local Workflow (`ci-local.yml`)
 
 **Triggers**
 
@@ -320,28 +321,44 @@ This repository uses two GitHub Actions workflows:
 1. Install dependencies (`npm ci`)
 2. Build application (`npm run build`)
 3. Run unit tests (`npm run test:unit`)
-4. Build Docker image
+4. Build Docker image from the default `Dockerfile`
 5. On `push` to `main` only:
   - Configure AWS credentials
   - Login to ECR
-  - Push `latest` and commit SHA tags
+  - Push `local-latest` and `local-<commit-sha>` tags
   - Apply ECR lifecycle policy (keep latest 5 images)
+
+### CI Dev Workflow (`ci-dev.yml`)
+
+**Triggers**
+
+- `workflow_dispatch`
+- `push` on `dev`
+
+**Pipeline behavior**
+
+1. Checkout repository
+2. Configure AWS credentials
+3. Login to ECR
+4. Build image from `Dockerfile-dev`
+5. Push `dev-latest` and `dev-<commit-sha>` tags
 
 ### CD Workflow (`cd.yml`)
 
 **Trigger**
 
-- Runs on `workflow_run` after `CI` completes successfully on `main`.
+- Runs on `workflow_run` after `CI Dev` completes successfully on `dev`.
+- Also supports manual trigger via `workflow_dispatch`.
 
 **Deployment behavior**
 
 1. Configure SSH key from GitHub Secret.
-2. SSH from runner to private host through bastion (`ProxyJump`).
-3. Login to ECR on target host and pull latest backend image.
-4. Locate `run-dev-compose-check.sh` on target host.
+2. Sync deployment files to the target host.
+3. SSH from runner to private host through bastion.
+4. Login to ECR on target host and pull `dev-latest`.
 5. Regenerate target host `.env` from GitHub Secrets.
 6. Run `run-dev-compose-check.sh`:
-  - Build first
+  - Pull latest app image first
   - Stop/remove old compose resources
   - Start services
   - Health check with retry
@@ -376,9 +393,10 @@ This repository uses two GitHub Actions workflows:
 
 ### Notes
 
-- CD expects `run-dev-compose-check.sh` to exist on the target host inside your deployed backend directory.
+- `CI Local` and `CI Dev` intentionally publish different image tags so the default Dockerfile flow and `Dockerfile-dev` flow do not clash.
+- `docker-compose.dev.yml` is intended to run the `dev-latest` image from ECR.
 - CD will overwrite the target host `.env` on each deployment using GitHub Secrets.
-- If CI succeeds on pull requests, CD will not run unless it is a successful CI run on `main`.
+- Automatic CD will not run from `main`; it follows the `dev` image flow.
 
 ---
 
