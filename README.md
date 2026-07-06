@@ -302,12 +302,44 @@ Use this for interactive test development while editing services and repositorie
 
 ## 🔁 CI/CD
 
-This repository uses four GitHub Actions workflows:
+This repository uses eight GitHub Actions workflows:
 
 - `CI Unit Tests` in `.github/workflows/ci-unit-tests.yml`
+- `CI Security Check` in `.github/workflows/ci-security-check.yml`
+- `CI Image Scan` in `.github/workflows/ci-image-scan.yml`
 - `CI Local` in `.github/workflows/ci-local.yml`
 - `CI Dev` in `.github/workflows/ci-dev.yml`
+- `Release Cut` in `.github/workflows/release-cut.yml`
 - `CD` in `.github/workflows/cd.yml`
+- `CD Release` in `.github/workflows/cd-release.yml`
+
+### CI/CD Flow Diagram
+
+```mermaid
+flowchart TD
+  A[CI Local Trigger\nmain push/PR or manual] --> B[Unit Tests\nci-unit-tests.yml]
+  B --> C[Security Check\nci-security-check.yml]
+  C --> D[Build Local Image\nDockerfile.local]
+  D --> E[Image Scan\nci-image-scan.yml]
+  E --> F{main push?}
+  F -->|yes| G[Push Local Tags\nlocal-latest, local-sha]
+  F -->|no| H[Stop after checks]
+
+  I[CI Dev Trigger\ndev push or manual] --> J[Unit Tests\nci-unit-tests.yml]
+  J --> K[Security Check\nci-security-check.yml]
+  K --> L[Build Dev Image\nDockerfile.dev]
+  L --> M[Image Scan\nci-image-scan.yml]
+  M --> N[Push Dev Tags\ndev-latest, dev-sha]
+
+  N --> O[CD Trigger\nworkflow_run on CI Dev]
+  O --> P[Deploy Bundle + SSH + Compose\ncd.yml]
+
+  Q[Manual Release Cut\nrelease-cut.yml] --> R[Create release/x.y.z branch\nfrom selected source]
+  R --> S{Create tag too?}
+  S -->|rc| T[vx.y.z-rc.1]
+  S -->|stable| U[vx.y.z]
+  U --> V[CD Release\ncd-release.yml]
+```
 
 ### CI Unit Tests Workflow (`ci-unit-tests.yml`)
 
@@ -321,6 +353,29 @@ This repository uses four GitHub Actions workflows:
 2. Run unit tests only (`npm run test:unit`)
 3. Build application (`npm run build`)
 
+### CI Security Check Workflow (`ci-security-check.yml`)
+
+**Purpose**
+
+- Shared reusable workflow (`workflow_call`) for dependency vulnerability checks.
+
+**Pipeline behavior**
+
+1. Install dependencies (`npm ci`)
+2. Run dependency audit (`npm audit --audit-level=high`)
+
+### CI Image Scan Workflow (`ci-image-scan.yml`)
+
+**Purpose**
+
+- Shared reusable workflow (`workflow_call`) for Docker image vulnerability scanning.
+
+**Pipeline behavior**
+
+1. Download Docker image artifact from previous job
+2. Load image into Docker (`docker load`)
+3. Run Trivy image scan (fail on `HIGH`/`CRITICAL`)
+
 ### CI Local Workflow (`ci-local.yml`)
 
 **Triggers**
@@ -332,10 +387,14 @@ This repository uses four GitHub Actions workflows:
 **Pipeline behavior**
 
 1. Run shared reusable unit-test workflow first (`needs: unit-tests`)
-2. Build Docker image from `Dockerfile.local`
-5. On `push` to `main` only:
+2. Run shared reusable dependency security workflow (`needs: security-check`)
+3. Build image from `Dockerfile.local` in `build-local-image`
+4. Export and upload image artifact (`local-image.tar`)
+5. Run reusable `CI Image Scan` as a separate process (`image-scan` job)
+6. On `push` to `main` only, run `push-local-image`:
   - Configure AWS credentials
   - Login to ECR
+  - Download and load image artifact
   - Push `local-latest` and `local-<commit-sha>` tags
   - Apply ECR lifecycle policy (keep latest 5 images)
 
@@ -349,11 +408,15 @@ This repository uses four GitHub Actions workflows:
 **Pipeline behavior**
 
 1. Run shared reusable unit-test workflow first (`needs: unit-tests`)
-2. Checkout repository
-3. Configure AWS credentials
-4. Login to ECR
-5. Build image from `Dockerfile.dev`
-6. Push `dev-latest` and `dev-<commit-sha>` tags
+2. Run shared reusable dependency security workflow (`needs: security-check`)
+3. Build image from `Dockerfile.dev` in `build-dev-image`
+4. Export and upload image artifact (`dev-image.tar`)
+5. Run reusable `CI Image Scan` as a separate process (`image-scan` job)
+6. Push from `push-dev-image`:
+  - Configure AWS credentials
+  - Login to ECR
+  - Download and load image artifact
+  - Push `dev-latest` and `dev-<commit-sha>` tags
 
 ### CD Workflow (`cd.yml`)
 
@@ -375,6 +438,55 @@ This repository uses four GitHub Actions workflows:
   - Start services
   - Health check with retry
   - Print app logs
+
+  ### Release Cut Workflow (`release-cut.yml`)
+
+  **Trigger**
+
+  - Manual trigger via `workflow_dispatch`.
+
+  **Inputs**
+
+  - `source_branch` (default: `dev`)
+  - `release_version` (SemVer: `X.Y.Z`)
+  - `create_tag` (`true` or `false`, required)
+  - `tag_type` (`rc` or `stable`, required)
+
+  **Behavior**
+
+  1. Validates release version format.
+  2. Creates `release/X.Y.Z` from selected source branch.
+  3. Optionally creates and pushes a tag:
+    - RC tag: `vX.Y.Z-rc.1`
+    - Stable tag: `vX.Y.Z`
+
+  ### CD Release Workflow (`cd-release.yml`)
+
+  **Triggers**
+
+  - `push` tag in stable format (`vX.Y.Z`)
+  - Manual trigger via `workflow_dispatch`
+
+  **Required input (manual run)**
+
+  - `release_tag` in format `vX.Y.Z` (required)
+
+  **Behavior**
+
+  1. Validates release tag format (`vX.Y.Z` only).
+  2. Builds deployment bundle with `APP_IMAGE_TAG=<release_tag>`.
+  3. Syncs bundle to target host via bastion.
+  4. Pulls ECR image for that exact tag.
+  5. Runs `run-dev-compose-check.sh` for rollout/health verification.
+
+  ### Recommended Release Strategy
+
+  1. Cut `release/X.Y.Z` from `dev` using `Release Cut` workflow.
+  2. Run QA and only accept release bug-fix commits on that branch.
+  3. Merge `release/X.Y.Z` into `main` when approved.
+  4. Create stable tag `vX.Y.Z` from the final `main` commit.
+  5. `CD Release` deploys from the stable tag.
+  6. Use tags as immutable release checkpoints and rollback anchors.
 
 ### Required GitHub Configuration
 
@@ -405,14 +517,17 @@ This repository uses four GitHub Actions workflows:
 
 ### Notes
 
-- `CI Local` and `CI Dev` intentionally publish different image tags so the default Dockerfile flow and `Dockerfile-dev` flow do not clash.
+- `CI Local` and `CI Dev` intentionally publish different image tags so `Dockerfile.local` and `Dockerfile.dev` flows do not clash.
 - `docker-compose.dev.yml` is intended to run the `dev-latest` image from ECR.
 - CD will overwrite the target host `.env` on each deployment using GitHub Secrets.
 - Automatic CD will not run from `main`; it follows the `dev` image flow.
+- Image scan is intentionally a separate process/job (`image-scan`) so it appears independently in GitHub checks.
 
 ### DRY Approach
 
 - Unit tests are centralized in a reusable workflow (`ci-unit-tests.yml`) and consumed by both `CI Local` and `CI Dev`.
+- Dependency security checks are centralized in a reusable workflow (`ci-security-check.yml`).
+- Image vulnerability scanning is centralized in a reusable workflow (`ci-image-scan.yml`).
 - Image tags are separated by concern to avoid overlap:
   - `local-*` for `Dockerfile.local`
   - `dev-*` for `Dockerfile.dev`

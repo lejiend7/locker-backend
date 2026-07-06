@@ -1,0 +1,129 @@
+name: CD Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to deploy (format: vX.Y.Z)"
+        required: true
+        type: string
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  BASTION_HOST: ${{ vars.BASTION_HOST }}
+  BASTION_USER: ${{ vars.BASTION_USER }}
+  PRIVATE_HOST: ${{ vars.PRIVATE_HOST }}
+  PRIVATE_USER: ${{ vars.PRIVATE_USER }}
+  DEPLOY_DIR: /home/ubuntu/application/locker-backend
+
+  PORT: ${{ secrets.PORT }}
+  NODE_ENV: ${{ secrets.NODE_ENV }}
+  DB_HOST: ${{ secrets.DB_HOST }}
+  DB_PORT: ${{ secrets.DB_PORT }}
+  DB_NAME: ${{ secrets.DB_NAME }}
+  MYSQL_USER: ${{ secrets.MYSQL_USER }}
+  MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+jobs:
+  cd-release:
+    name: CD Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve and validate release tag
+        id: release-tag
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            RELEASE_TAG="$INPUT_RELEASE_TAG"
+          else
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must match stable format vX.Y.Z"
+            exit 1
+          fi
+
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Configure SSH key
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Prepare deployment bundle
+        shell: bash
+        run: |
+          mkdir -p .deploy-bundle
+          cp docker-compose.dev.yml .deploy-bundle/docker-compose.dev.yml
+          cp run-dev-compose-check.sh .deploy-bundle/run-dev-compose-check.sh
+          printf '%s\n' \
+            "PORT=$PORT" \
+            "NODE_ENV=$NODE_ENV" \
+            "DB_HOST=$DB_HOST" \
+            "DB_PORT=$DB_PORT" \
+            "DB_NAME=$DB_NAME" \
+            "MYSQL_USER=$MYSQL_USER" \
+            "MYSQL_PASSWORD=$MYSQL_PASSWORD" \
+            "JWT_SECRET=$JWT_SECRET" \
+            "CORS_ORIGIN=$CORS_ORIGIN" \
+            "APP_IMAGE_TAG=${{ steps.release-tag.outputs.release_tag }}" \
+            > .deploy-bundle/.env
+
+      - name: Upload deployment bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-release-deploy-bundle-${{ steps.release-tag.outputs.release_tag }}
+          path: .deploy-bundle/
+          if-no-files-found: error
+          include-hidden-files: true
+
+      - name: Rsync deployment bundle to target host
+        shell: bash
+        run: |
+          TARGET_DIR="${DEPLOY_DIR:-$HOME/locker-backend}"
+
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o GlobalKnownHostsFile=/dev/null \
+            -o "ProxyCommand=ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -W %h:%p $BASTION_USER@$BASTION_HOST" \
+            "$PRIVATE_USER@$PRIVATE_HOST" \
+            "mkdir -p \"$TARGET_DIR\""
+
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -o ProxyCommand='ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -W %h:%p $BASTION_USER@$BASTION_HOST'" \
+            .deploy-bundle/ \
+            "$PRIVATE_USER@$PRIVATE_HOST:$TARGET_DIR/"
+
+      - name: Bastion hop and deploy release tag
+        shell: bash
+        run: |
+          TARGET_DIR="${DEPLOY_DIR:-$HOME/locker-backend}"
+          RELEASE_TAG="${{ steps.release-tag.outputs.release_tag }}"
+
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -o GlobalKnownHostsFile=/dev/null \
+            -o "ProxyCommand=ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -W %h:%p $BASTION_USER@$BASTION_HOST" \
+            "$PRIVATE_USER@$PRIVATE_HOST" \
+            "set -euo pipefail; aws ecr get-login-password --region '$AWS_REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY'; docker pull '$ECR_REGISTRY/$ECR_REPOSITORY:$RELEASE_TAG'; APP_DIR=\"$TARGET_DIR\"; cd \"\$APP_DIR\"; chmod +x ./run-dev-compose-check.sh; ./run-dev-compose-check.sh"

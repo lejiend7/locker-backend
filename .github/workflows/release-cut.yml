@@ -1,0 +1,94 @@
+name: Release Cut
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: Source branch used to cut the release branch.
+        required: true
+        default: dev
+        type: string
+      release_version:
+        description: "Release version in SemVer (example: 1.8.0)."
+        required: true
+        type: string
+      create_tag:
+        description: Also create and push a release tag.
+        required: true
+        type: boolean
+      tag_type:
+        description: Tag type when create_tag is enabled.
+        required: true
+        type: choice
+        options:
+          - rc
+          - stable
+
+permissions:
+  contents: write
+
+jobs:
+  cut-release:
+    name: Create Release Branch and Optional Tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create release branch and optional tag
+        env:
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          CREATE_TAG: ${{ inputs.create_tag }}
+          TAG_TYPE: ${{ inputs.tag_type }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release_version must follow SemVer format: X.Y.Z"
+            exit 1
+          fi
+
+          RELEASE_BRANCH="release/$RELEASE_VERSION"
+
+          if [[ "$TAG_TYPE" == "rc" ]]; then
+            RELEASE_TAG="v$RELEASE_VERSION-rc.1"
+          else
+            RELEASE_TAG="v$RELEASE_VERSION"
+          fi
+
+          if ! git ls-remote --exit-code --heads origin "$SOURCE_BRANCH" >/dev/null 2>&1; then
+            echo "Source branch not found on origin: $SOURCE_BRANCH"
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" >/dev/null 2>&1; then
+            echo "Release branch already exists: $RELEASE_BRANCH"
+            exit 1
+          fi
+
+          git fetch origin "$SOURCE_BRANCH"
+          git checkout -B "$RELEASE_BRANCH" "origin/$SOURCE_BRANCH"
+          git push origin "$RELEASE_BRANCH"
+
+          echo "Created release branch: $RELEASE_BRANCH"
+
+          if [[ "$CREATE_TAG" == "true" ]]; then
+            if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+              echo "Tag already exists: $RELEASE_TAG"
+              exit 1
+            fi
+
+            git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+            git push origin "$RELEASE_TAG"
+            echo "Created release tag: $RELEASE_TAG"
+          else
+            echo "Tag creation skipped"
+          fi
