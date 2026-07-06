@@ -37,7 +37,7 @@ jobs:
       - name: Build local Docker image
         run: |
           docker build \
-            -f Dockerfile-local \
+            -f Dockerfile.local \
             --target production \
             -t $ECR_REPOSITORY:local-latest \
             -t $ECR_REPOSITORY:local-${{ github.sha }} \

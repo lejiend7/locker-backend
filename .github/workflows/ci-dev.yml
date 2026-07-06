@@ -32,7 +32,7 @@ jobs:
       - name: Build dev Docker image
         run: |
           docker build \
-            -f Dockerfile-dev \
+            -f Dockerfile.dev \
             --target production \
             -t $ECR_REPOSITORY:dev-latest \
             -t $ECR_REPOSITORY:dev-${{ github.sha }} \
