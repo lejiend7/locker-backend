@@ -3,13 +3,13 @@ set -euo pipefail
 
 COMPOSE_FILE="docker-compose.dev.yml"
 
-printf "[0/5] Building services first (no downtime if build fails)...\n"
-docker compose -f "$COMPOSE_FILE" build
+printf "[0/5] Pulling latest app image first (no downtime if pull fails)...\n"
+docker compose -f "$COMPOSE_FILE" pull app
 
 printf "[1/5] Stopping and deleting previous compose resources...\n"
 docker compose -f "$COMPOSE_FILE" down --remove-orphans || true
 
-printf "[2/5] Starting services with built image...\n"
+printf "[2/5] Starting services with pulled image...\n"
 docker compose -f "$COMPOSE_FILE" up -d
 
 printf "[3/5] Showing service status...\n"

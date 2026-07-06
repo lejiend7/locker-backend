@@ -1,0 +1,86 @@
+name: CI Dev
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [main, dev]
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+jobs:
+  unit-tests:
+    if: github.event_name != 'pull_request' || github.head_ref == 'dev' || github.base_ref == 'dev'
+    uses: ./.github/workflows/ci-unit-tests.yml
+
+  security-check:
+    uses: ./.github/workflows/ci-security-check.yml
+    needs: unit-tests
+
+  build-dev-image:
+    name: Build Dev Image
+    runs-on: ubuntu-latest
+    needs: [unit-tests, security-check]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build dev Docker image
+        run: |
+          docker build \
+            -f Dockerfile.dev \
+            --target production \
+            -t $ECR_REPOSITORY:dev-latest \
+            -t $ECR_REPOSITORY:dev-${{ github.sha }} \
+            .
+
+      - name: Export dev image artifact
+        run: docker save $ECR_REPOSITORY:dev-latest -o dev-image.tar
+
+      - name: Upload dev image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-image
+          path: dev-image.tar
+
+  image-scan:
+    uses: ./.github/workflows/ci-image-scan.yml
+    needs: build-dev-image
+    with:
+      artifact-name: dev-image
+      image-ref: ${{ env.ECR_REPOSITORY }}:dev-latest
+
+  push-dev-image:
+    name: Push Dev Image
+    runs-on: ubuntu-latest
+    needs: image-scan
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION \
+            | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+      - name: Download dev image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-image
+
+      - name: Load dev image from artifact
+        run: docker load -i dev-image.tar
+
+      - name: Tag and push dev image to ECR
+        run: |
+          docker tag $ECR_REPOSITORY:dev-latest $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest
+          docker tag $ECR_REPOSITORY:dev-${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY:dev-${{ github.sha }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:dev-latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:dev-${{ github.sha }}

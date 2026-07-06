@@ -1,11 +1,15 @@
-name: CD
+name: CD Release
 
 on:
-  workflow_run:
-    workflows: [CI Dev]
-    branches: [dev]
-    types: [completed]
+  push:
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to deploy (format: vX.Y.Z)"
+        required: true
+        type: string
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -29,12 +33,32 @@ env:
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
 
 jobs:
-  cd:
-    name: CD
+  cd-release:
+    name: CD Release
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve and validate release tag
+        id: release-tag
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            RELEASE_TAG="$INPUT_RELEASE_TAG"
+          else
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must match stable format vX.Y.Z"
+            exit 1
+          fi
+
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Configure SSH key
         shell: bash
@@ -59,12 +83,13 @@ jobs:
             "MYSQL_PASSWORD=$MYSQL_PASSWORD" \
             "JWT_SECRET=$JWT_SECRET" \
             "CORS_ORIGIN=$CORS_ORIGIN" \
+            "APP_IMAGE_TAG=${{ steps.release-tag.outputs.release_tag }}" \
             > .deploy-bundle/.env
 
       - name: Upload deployment bundle artifact
         uses: actions/upload-artifact@v4
         with:
-          name: backend-deploy-bundle
+          name: backend-release-deploy-bundle-${{ steps.release-tag.outputs.release_tag }}
           path: .deploy-bundle/
           if-no-files-found: error
           include-hidden-files: true
@@ -88,10 +113,11 @@ jobs:
             .deploy-bundle/ \
             "$PRIVATE_USER@$PRIVATE_HOST:$TARGET_DIR/"
 
-      - name: Bastion hop and pull latest dev ECR image
+      - name: Bastion hop and deploy release tag
         shell: bash
         run: |
           TARGET_DIR="${DEPLOY_DIR:-$HOME/locker-backend}"
+          RELEASE_TAG="${{ steps.release-tag.outputs.release_tag }}"
 
           ssh -i ~/.ssh/deploy_key \
             -o IdentitiesOnly=yes \
@@ -100,5 +126,4 @@ jobs:
             -o GlobalKnownHostsFile=/dev/null \
             -o "ProxyCommand=ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -W %h:%p $BASTION_USER@$BASTION_HOST" \
             "$PRIVATE_USER@$PRIVATE_HOST" \
-              "set -euo pipefail; aws ecr get-login-password --region '$AWS_REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY'; docker pull '$ECR_REGISTRY/$ECR_REPOSITORY:dev-latest'; APP_DIR=\"$TARGET_DIR\"; cd \"\$APP_DIR\"; chmod +x ./run-dev-compose-check.sh; ./run-dev-compose-check.sh"
-
+            "set -euo pipefail; aws ecr get-login-password --region '$AWS_REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY'; docker pull '$ECR_REGISTRY/$ECR_REPOSITORY:$RELEASE_TAG'; APP_DIR=\"$TARGET_DIR\"; cd \"\$APP_DIR\"; chmod +x ./run-dev-compose-check.sh; ./run-dev-compose-check.sh"

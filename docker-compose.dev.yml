@@ -1,9 +1,7 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile-dev
-      target: production
+    image: 905846953702.dkr.ecr.ap-southeast-5.amazonaws.com/locker-backend:${APP_IMAGE_TAG:-dev-latest}
+    pull_policy: always
     env_file:
       - .env
     ports:
