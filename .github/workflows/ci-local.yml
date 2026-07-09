@@ -50,7 +50,7 @@ jobs:
     needs: build-local-image
     with:
       artifact-name: local-image
-      image-ref: ${{ env.ECR_REPOSITORY }}:local-latest
+      image-ref: ${{ vars.ECR_REPOSITORY }}:local-latest
 
   push-local-image:
     name: Push Local Image
@@ -63,7 +63,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         run: |
