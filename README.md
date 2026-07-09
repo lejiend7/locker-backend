@@ -302,12 +302,11 @@ Use this for interactive test development while editing services and repositorie
 
 ## 🔁 CI/CD
 
-This repository uses eight GitHub Actions workflows:
+This repository uses seven GitHub Actions workflows:
 
 - `CI Unit Tests` in `.github/workflows/ci-unit-tests.yml`
 - `CI Security Check` in `.github/workflows/ci-security-check.yml`
 - `CI Image Scan` in `.github/workflows/ci-image-scan.yml`
-- `CI Local` in `.github/workflows/ci-local.yml`
 - `CI Dev` in `.github/workflows/ci-dev.yml`
 - `Release Cut` in `.github/workflows/release-cut.yml`
 - `CD` in `.github/workflows/cd.yml`
@@ -317,15 +316,7 @@ This repository uses eight GitHub Actions workflows:
 
 ```mermaid
 flowchart TD
-  A[CI Local Trigger\nmain push/PR or manual] --> B[Unit Tests\nci-unit-tests.yml]
-  B --> C[Security Check\nci-security-check.yml]
-  C --> D[Build Local Image\nDockerfile.local]
-  D --> E[Image Scan\nci-image-scan.yml]
-  E --> F{main push?}
-  F -->|yes| G[Push Local Tags\nlocal-latest, local-sha]
-  F -->|no| H[Stop after checks]
-
-  I[CI Dev Trigger\ndev push or manual] --> J[Unit Tests\nci-unit-tests.yml]
+  I[CI Dev Trigger\ndev push/PR or manual] --> J[Unit Tests\nci-unit-tests.yml]
   J --> K[Security Check\nci-security-check.yml]
   K --> L[Build Dev Image\nDockerfile.dev]
   L --> M[Image Scan\nci-image-scan.yml]
@@ -375,28 +366,6 @@ flowchart TD
 1. Download Docker image artifact from previous job
 2. Load image into Docker (`docker load`)
 3. Run Trivy image scan (fail on `HIGH`/`CRITICAL`)
-
-### CI Local Workflow (`ci-local.yml`)
-
-**Triggers**
-
-- `workflow_dispatch`
-- `push` on `main`
-- `pull_request` targeting `main`
-
-**Pipeline behavior**
-
-1. Run shared reusable unit-test workflow first (`needs: unit-tests`)
-2. Run shared reusable dependency security workflow (`needs: security-check`)
-3. Build image from `Dockerfile.local` in `build-local-image`
-4. Export and upload image artifact (`local-image.tar`)
-5. Run reusable `CI Image Scan` as a separate process (`image-scan` job)
-6. On `push` to `main` only, run `push-local-image`:
-  - Configure AWS credentials
-  - Login to ECR
-  - Download and load image artifact
-  - Push `local-latest` and `local-<commit-sha>` tags
-  - Apply ECR lifecycle policy (keep latest 5 images)
 
 ### CI Dev Workflow (`ci-dev.yml`)
 
