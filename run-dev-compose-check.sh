@@ -9,11 +9,14 @@ docker compose -f "$COMPOSE_FILE" pull app
 printf "[1/5] Stopping and deleting previous compose resources...\n"
 docker compose -f "$COMPOSE_FILE" down --remove-orphans || true
 
-printf "[2/5] Starting services with pulled image...\n"
+printf "[2/5] Ensuring stale app container is removed...\n"
+docker compose -f "$COMPOSE_FILE" rm -sf app || true
+
+printf "[3/5] Starting services with pulled image...\n"
 docker compose -f "$COMPOSE_FILE" up -d
 
-printf "[3/5] Showing service status...\n"
+printf "[4/5] Showing service status...\n"
 docker compose -f "$COMPOSE_FILE" ps
 
-printf "[4/4] Showing recent app logs...\n"
+printf "[5/5] Showing recent app logs...\n"
 docker compose -f "$COMPOSE_FILE" logs --tail 50 app
