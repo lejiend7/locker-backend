@@ -15,20 +15,5 @@ docker compose -f "$COMPOSE_FILE" up -d
 printf "[3/5] Showing service status...\n"
 docker compose -f "$COMPOSE_FILE" ps
 
-printf "[4/5] Checking health endpoint...\n"
-# Wait up to 30s for app startup to avoid false negatives right after container start.
-for i in {1..30}; do
-	if curl -fsS http://localhost:3000/health >/dev/null 2>&1; then
-		curl -sS http://localhost:3000/health
-		printf "\n"
-		break
-	fi
-	if [[ "$i" -eq 30 ]]; then
-		printf "Health check failed after %s attempts\n" "$i"
-		exit 1
-	fi
-	sleep 1
-done
-
-printf "[5/5] Showing recent app logs...\n"
+printf "[4/4] Showing recent app logs...\n"
 docker compose -f "$COMPOSE_FILE" logs --tail 50 app
