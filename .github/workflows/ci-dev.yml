@@ -2,8 +2,6 @@ name: CI Dev
 
 on:
   workflow_dispatch:
-  push:
-    branches: [dev]
   pull_request:
     branches: [main]
 
@@ -47,7 +45,7 @@ jobs:
             .
 
       - name: Export dev image artifact
-        run: docker save $ECR_REPOSITORY:dev-latest -o dev-image.tar
+        run: docker save $ECR_REPOSITORY:dev-latest $ECR_REPOSITORY:dev-${{ github.sha }} -o dev-image.tar
 
       - name: Upload dev image artifact
         uses: actions/upload-artifact@v4
