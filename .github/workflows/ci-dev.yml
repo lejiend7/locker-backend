@@ -28,9 +28,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build dev Docker image
         run: |
-          docker build \
+          docker buildx build \
+            --platform linux/arm64 \
+            --load \
             -f Dockerfile.dev \
             --target production \
             -t $ECR_REPOSITORY:dev-latest \
